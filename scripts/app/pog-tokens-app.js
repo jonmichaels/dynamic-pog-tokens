@@ -14,6 +14,9 @@ import { processToken, loadImage } from './pog-processor.js';
 /** @type {string} Base path for module assets */
 const MODULE_PATH = "modules/dynamic-pog-tokens";
 
+/** Foundry v13 — FilePicker is namespaced */
+const FilePicker = foundry.applications.apps.FilePicker.implementation;
+
 /**
  * @extends {ApplicationV2}
  * @mixes {HandlebarsApplicationMixin}
@@ -611,18 +614,43 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
 
                 // 3. Ring (non-blocking — draw token first, then add ring)
                 const ringPromise = this._ensureRingCache().then(cache => {
-                    const frameMap = { 256: "token-ring-tiny", 512: "token-ring-med", 1024: "token-ring-large-huge", 2048: "token-ring-gargantuan" };
-                    const fn = frameMap[cs];
+                    const sizes = [2048, 1024, 512, 256];
+                    let fn = null;
+                    for (const s of sizes) {
+                        if (cs >= s) {
+                            const map = { 2048: "token-ring-gargantuan", 1024: "token-ring-large-huge", 512: "token-ring-med", 256: "token-ring-tiny" };
+                            fn = map[s];
+                            break;
+                        }
+                    }
                     console.log("[DynPog] Ring frame lookup:", { canvasSize: cs, frameName: fn, hasFrame: !!(fn && cache.frames[fn]) });
                     if (!fn || !cache.frames[fn]) return null;
                     const f = cache.frames[fn].frame;
                     console.log("[DynPog] Ring frame rect:", f);
+                    // Draw frame onto canvas sized to match the output canvas
                     const rc = document.createElement("canvas");
-                    rc.width = f.w;
-                    rc.height = f.h;
+                    rc.width = cs;
+                    rc.height = cs;
                     const rctx = rc.getContext("2d");
-                    rctx.drawImage(cache.bitmap, f.x, f.y, f.w, f.h, 0, 0, f.w, f.h);
-                    return createImageBitmap(rc);
+                    // The ring frame is extracted from the spritesheet, then scaled to fit cs
+                    const scaleX = cs / f.w;
+                    const scaleY = cs / f.h;
+                    const scale = Math.min(scaleX, scaleY);
+                    const dw = f.w * scale;
+                    const dh = f.h * scale;
+                    const dx = (cs - dw) / 2;
+                    const dy = (cs - dh) / 2;
+                    rctx.drawImage(cache.bitmap, f.x, f.y, f.w, f.h, dx, dy, dw, dh);
+                    // Return as Image via blob URL (more reliable than createImageBitmap)
+                    return new Promise((resolve, reject) => {
+                        rc.toBlob(b => {
+                            if (!b) { reject(new Error("toBlob null")); return; }
+                            const img = new Image();
+                            img.onload = () => resolve(img);
+                            img.onerror = reject;
+                            img.src = URL.createObjectURL(b);
+                        }, "image/png");
+                    });
                 }).catch(e => { console.warn("[DynPog] Ring promise failed:", e); return null; });
 
                 // Show token + checkerboard immediately
