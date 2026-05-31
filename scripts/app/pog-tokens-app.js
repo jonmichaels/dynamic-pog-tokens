@@ -72,6 +72,9 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
     /** @type {string|null} Last source basename (for ring export filename) */
     _lastSourceBasename = null;
 
+    /** @type {Promise<{bitmap: ImageBitmap, frames: Object}>|null} Cached ring spritesheet */
+    _ringCache = null;
+
     /** @override */
     static PARTS = {
         content: {
@@ -495,62 +498,43 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
      * @param {number} h  Canvas height
      */
     _drawCheckerboard(ctx, w, h) {
-        const size = Math.max(8, Math.floor(Math.min(w, h) / 32));
-        for (let y = 0; y < h; y += size) {
-            for (let x = 0; x < w; x += size) {
-                ctx.fillStyle = ((x / size + y / size) % 2 === 0) ? "#cccccc" : "#808080";
-                ctx.fillRect(x, y, size, size);
+        const sz = Math.max(8, Math.floor(Math.min(w, h) / 32));
+        for (let y = 0; y < h; y += sz) {
+            for (let x = 0; x < w; x += sz) {
+                ctx.fillStyle = ((x / sz + y / sz) % 2 === 0) ? "#ffffff" : "#cccccc";
+                ctx.fillRect(x, y, sz, sz);
             }
         }
     }
 
     /**
-     * Load the Dynamic Ring texture from Foundry's active spritesheet.
-     * @param {number} canvasSize  The output canvas size (256, 512, 1024, 2048)
-     * @returns {Promise<ImageBitmap|null>}  The ring frame, or null if unavailable
+     * Load and cache the Dynamic Ring spritesheet from Foundry.
+     * @returns {Promise<{bitmap: ImageBitmap, frames: Object}>}
      */
-    async _loadRingFrame(canvasSize) {
-        try {
+    async _ensureRingCache() {
+        if (this._ringCache) return this._ringCache;
+
+        this._ringCache = (async () => {
             const ringConfigId = game.settings.get("core", "dynamicTokenRing") || "coreSteel";
             const config = CONFIG.Token.ring.getConfig(ringConfigId);
-            if (!config?.spritesheet) return null;
+            if (!config?.spritesheet) throw new Error("No spritesheet configured");
 
-            // Spritesheet JSON path like "canvas/tokens/rings-steel.json"
-            const jsonPath = config.spritesheet;
+            const jsonPath = "/" + config.spritesheet;
             const imgPath = jsonPath.replace(/\.json$/, ".webp");
 
-            // Fetch spritesheet JSON for frame data
-            const response = await fetch(imgPath);
-            if (!response.ok) return null;
-            const blob = await response.blob();
-            const spritesheetImg = await createImageBitmap(blob);
+            const [imgResp, jsonResp] = await Promise.all([
+                fetch(imgPath),
+                fetch(jsonPath)
+            ]);
+            if (!imgResp.ok) throw new Error(`Failed to load ring image: ${imgResp.status}`);
+            if (!jsonResp.ok) throw new Error(`Failed to load ring data: ${jsonResp.status}`);
 
-            // Fetch the JSON to get frame coords
-            const jsonResp = await fetch(jsonPath);
-            const spritesheetData = await jsonResp.json();
+            const bitmap = await createImageBitmap(await imgResp.blob());
+            const frames = (await jsonResp.json()).frames;
+            return { bitmap, frames };
+        })();
 
-            // Find the ring frame matching this canvas size
-            const frameMap = {
-                256: "token-ring-tiny",
-                512: "token-ring-med",
-                1024: "token-ring-large-huge",
-                2048: "token-ring-gargantuan",
-            };
-            const frameName = frameMap[canvasSize];
-            if (!frameName || !spritesheetData.frames[frameName]) return null;
-
-            const frame = spritesheetData.frames[frameName].frame;
-            const ringCanvas = document.createElement("canvas");
-            ringCanvas.width = frame.w;
-            ringCanvas.height = frame.h;
-            const ringCtx = ringCanvas.getContext("2d");
-            ringCtx.drawImage(spritesheetImg, -frame.x, -frame.y);
-
-            return await createImageBitmap(ringCanvas);
-        } catch (e) {
-            console.warn("[DynPog] Failed to load ring frame:", e);
-            return null;
-        }
+        return this._ringCache;
     }
 
     /**
@@ -560,29 +544,48 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
     async _loadAndPreview(filePath) {
         const html = this.element;
         const beforeImg = html.querySelector("#dpog-before-img");
+        const beforeName = html.querySelector("#dpog-before-name");
         const afterImg = html.querySelector("#dpog-after-img");
         const afterName = html.querySelector("#dpog-after-name");
         const exportRingBtn = html.querySelector("#dpog-export-ring");
 
         try {
-            // Show source image in the Before panel
-            if (beforeImg) {
-                beforeImg.src = filePath;
-            }
-
             // Run processing pipeline
             const result = await processToken(filePath, this._settings);
-
-            // Store result for ring export
             this._lastResult = result;
-            const basename = filePath.split('/').pop() || filePath;
-            this._lastSourceBasename = basename;
+            this._lastSourceBasename = filePath.split('/').pop() || filePath;
 
-            // Composite: checkerboard → token → dynamic ring
+            // --- Before panel: draw source on checkerboard ---
+            if (beforeImg) {
+                if (beforeImg._objectUrl) URL.revokeObjectURL(beforeImg._objectUrl);
+
+                const canvas = document.createElement("canvas");
+                const srcImg = await new Promise((resolve, reject) => {
+                    const i = new Image();
+                    i.onload = () => resolve(i);
+                    i.onerror = reject;
+                    i.src = filePath;
+                });
+                canvas.width = srcImg.naturalWidth;
+                canvas.height = srcImg.naturalHeight;
+                const ctx = canvas.getContext("2d");
+                this._drawCheckerboard(ctx, canvas.width, canvas.height);
+                ctx.drawImage(srcImg, 0, 0);
+
+                const blob = await new Promise((resolve, reject) => {
+                    canvas.toBlob(b => b ? resolve(b) : reject(new Error("toBlob null")), "image/png");
+                });
+                const url = URL.createObjectURL(blob);
+                beforeImg._objectUrl = url;
+                beforeImg.src = url;
+            }
+            if (beforeName) {
+                beforeName.textContent = `${result.beforeData.width}\u00d7${result.beforeData.height}`;
+            }
+
+            // --- After panel: checkerboard → token → ring ---
             if (afterImg) {
-                if (afterImg._objectUrl) {
-                    URL.revokeObjectURL(afterImg._objectUrl);
-                }
+                if (afterImg._objectUrl) URL.revokeObjectURL(afterImg._objectUrl);
 
                 const cs = result.afterData.canvasSize;
                 const canvas = document.createElement("canvas");
@@ -590,10 +593,10 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
                 canvas.height = cs;
                 const ctx = canvas.getContext("2d");
 
-                // 1. Draw checkerboard transparency pattern
+                // 1. Checkerboard
                 this._drawCheckerboard(ctx, cs, cs);
 
-                // 2. Load and draw the processed token
+                // 2. Token
                 const tokenImg = await new Promise((resolve, reject) => {
                     const i = new Image();
                     i.onload = () => resolve(i);
@@ -602,20 +605,44 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
                 });
                 ctx.drawImage(tokenImg, 0, 0);
 
-                // 3. Load and draw the Dynamic Ring texture
-                const ringFrame = await this._loadRingFrame(cs);
+                // 3. Ring (non-blocking — draw token first, then add ring)
+                const ringPromise = this._ensureRingCache().then(cache => {
+                    const frameMap = { 256: "token-ring-tiny", 512: "token-ring-med", 1024: "token-ring-large-huge", 2048: "token-ring-gargantuan" };
+                    const fn = frameMap[cs];
+                    if (!fn || !cache.frames[fn]) return null;
+                    const f = cache.frames[fn].frame;
+                    const rc = document.createElement("canvas");
+                    rc.width = f.w;
+                    rc.height = f.h;
+                    rc.getContext("2d").drawImage(cache.bitmap, -f.x, -f.y);
+                    return createImageBitmap(rc);
+                }).catch(() => null);
+
+                // Show token + checkerboard immediately
+                const blob1 = await new Promise((resolve, reject) => {
+                    canvas.toBlob(b => b ? resolve(b) : reject(new Error("toBlob null")), "image/png");
+                });
+                const url1 = URL.createObjectURL(blob1);
+                afterImg._objectUrl = url1;
+                afterImg.src = url1;
+
+                // Then draw ring if available
+                const ringFrame = await ringPromise;
                 if (ringFrame) {
                     ctx.drawImage(ringFrame, 0, 0);
+                    const blob2 = await new Promise((resolve, reject) => {
+                        canvas.toBlob(b => b ? resolve(b) : reject(new Error("toBlob null")), "image/png");
+                    });
+                    URL.revokeObjectURL(url1);
+                    const url2 = URL.createObjectURL(blob2);
+                    afterImg._objectUrl = url2;
+                    afterImg.src = url2;
                 }
-
-                const ringBlob = await new Promise((resolve, reject) => {
-                    canvas.toBlob(b => b ? resolve(b) : reject(new Error("toBlob returned null")),
-                        "image/png");
-                });
-
-                const url = URL.createObjectURL(ringBlob);
-                afterImg._objectUrl = url;
-                afterImg.src = url;
+            }
+            if (afterName) {
+                const ad = result.afterData;
+                const mode = result.stats.mode;
+                afterName.textContent = `${ad.canvasSize}\u00d7${ad.canvasSize} (${ad.width}\u00d7${ad.height} ${mode})`;
             }
 
             // Enable export ring button
@@ -623,24 +650,11 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
                 exportRingBtn.disabled = false;
             }
 
-            // Display size info
-            if (afterName) {
-                const ringLabel = result.afterData.targetRing;
-                const modeLabel = result.stats.mode === 'override' ? ' [override]' : '';
-                afterName.textContent = `${result.afterData.width}\u00d7${result.afterData.height} (${ringLabel}${modeLabel})`;
-            }
         } catch (err) {
-            // Disable export ring button
-            if (exportRingBtn) {
-                exportRingBtn.disabled = true;
-            }
-            // Display error in the After panel
-            if (afterName) {
-                afterName.textContent = `Error: ${err.message}`;
-            }
-            if (afterImg) {
-                afterImg.src = '';
-            }
+            if (exportRingBtn) exportRingBtn.disabled = true;
+            if (afterName) afterName.textContent = `Error: ${err.message}`;
+            if (afterImg) afterImg.src = '';
+            console.error("[DynPog] Preview error:", err);
         }
     }
 
