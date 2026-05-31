@@ -517,20 +517,24 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
         this._ringCache = (async () => {
             const ringConfigId = game.settings.get("core", "dynamicTokenRing") || "coreSteel";
             const config = CONFIG.Token.ring.getConfig(ringConfigId);
+            console.log("[DynPog] Ring config:", { ringConfigId, hasConfig: !!config, spritesheet: config?.spritesheet });
             if (!config?.spritesheet) throw new Error("No spritesheet configured");
 
             const jsonPath = "/" + config.spritesheet;
             const imgPath = jsonPath.replace(/\.json$/, ".webp");
+            console.log("[DynPog] Loading ring spritesheet:", { jsonPath, imgPath });
 
             const [imgResp, jsonResp] = await Promise.all([
                 fetch(imgPath),
                 fetch(jsonPath)
             ]);
+            console.log("[DynPog] Ring fetch results:", { imgOk: imgResp.ok, imgStatus: imgResp.status, jsonOk: jsonResp.ok, jsonStatus: jsonResp.status });
             if (!imgResp.ok) throw new Error(`Failed to load ring image: ${imgResp.status}`);
             if (!jsonResp.ok) throw new Error(`Failed to load ring data: ${jsonResp.status}`);
 
             const bitmap = await createImageBitmap(await imgResp.blob());
             const frames = (await jsonResp.json()).frames;
+            console.log("[DynPog] Ring cached successfully, frame count:", Object.keys(frames).length);
             return { bitmap, frames };
         })();
 
@@ -609,14 +613,17 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
                 const ringPromise = this._ensureRingCache().then(cache => {
                     const frameMap = { 256: "token-ring-tiny", 512: "token-ring-med", 1024: "token-ring-large-huge", 2048: "token-ring-gargantuan" };
                     const fn = frameMap[cs];
+                    console.log("[DynPog] Ring frame lookup:", { canvasSize: cs, frameName: fn, hasFrame: !!(fn && cache.frames[fn]) });
                     if (!fn || !cache.frames[fn]) return null;
                     const f = cache.frames[fn].frame;
+                    console.log("[DynPog] Ring frame rect:", f);
                     const rc = document.createElement("canvas");
                     rc.width = f.w;
                     rc.height = f.h;
-                    rc.getContext("2d").drawImage(cache.bitmap, -f.x, -f.y);
+                    const rctx = rc.getContext("2d");
+                    rctx.drawImage(cache.bitmap, f.x, f.y, f.w, f.h, 0, 0, f.w, f.h);
                     return createImageBitmap(rc);
-                }).catch(() => null);
+                }).catch(e => { console.warn("[DynPog] Ring promise failed:", e); return null; });
 
                 // Show token + checkerboard immediately
                 const blob1 = await new Promise((resolve, reject) => {

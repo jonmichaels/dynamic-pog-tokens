@@ -239,51 +239,44 @@ export async function loadImage(src) {
 // ---------------------------------------------------------------------------
 
 /**
- * Optionally crop pixels from each edge of an image.
+ * Optionally erase pixels from each edge of an image, keeping the same dimensions.
+ * Pixels in the border are set to transparent (alpha=0). The image size does not change.
+ * This removes prerendered token rings or unwanted outer content.
  *
  * @param {ImageBitmap} imageBitmap
- * @param {number} trimPx  Pixels to trim from each edge (0 = no trim)
+ * @param {number} trimPx  Pixels to erase from each edge (0 = no change)
  * @returns {Promise<{trimmedBitmap: ImageBitmap, trimmedWidth: number, trimmedHeight: number}>}
  */
 export async function trimImage(imageBitmap, trimPx) {
-  if (trimPx === 0) {
-    return {
-      trimmedBitmap: imageBitmap,
-      trimmedWidth: imageBitmap.width,
-      trimmedHeight: imageBitmap.height,
-    };
-  }
-
   const srcW = imageBitmap.width;
   const srcH = imageBitmap.height;
 
-  // Guard: don't trim into oblivion
-  const safeTrim = Math.min(trimPx, Math.floor((srcW - 2) / 2), Math.floor((srcH - 2) / 2));
-  if (safeTrim <= 0) {
-    return {
-      trimmedBitmap: imageBitmap,
-      trimmedWidth: srcW,
-      trimmedHeight: srcH,
-    };
+  if (trimPx <= 0) {
+    return { trimmedBitmap: imageBitmap, trimmedWidth: srcW, trimmedHeight: srcH };
   }
 
-  const newW = srcW - 2 * safeTrim;
-  const newH = srcH - 2 * safeTrim;
-
-  const canvas = createCanvas(newW, newH);
+  // Draw onto same-size canvas
+  const canvas = createCanvas(srcW, srcH);
   const ctx = canvas.getContext('2d');
-  ctx.drawImage(
-    imageBitmap,
-    safeTrim, safeTrim, newW, newH,   // source rect (inner portion)
-    0, 0, newW, newH,                  // dest rect
-  );
+  ctx.drawImage(imageBitmap, 0, 0);
+
+  // Clear border pixels by drawing a transparent "frame" over the edges
+  const imageData = ctx.getImageData(0, 0, srcW, srcH);
+  const data = imageData.data;
+
+  const safeTrim = Math.min(trimPx, Math.floor(Math.min(srcW, srcH) / 2));
+  for (let y = 0; y < srcH; y++) {
+    for (let x = 0; x < srcW; x++) {
+      if (x < safeTrim || x >= srcW - safeTrim || y < safeTrim || y >= srcH - safeTrim) {
+        const idx = (y * srcW + x) * 4;
+        data[idx + 3] = 0; // alpha = 0
+      }
+    }
+  }
+  ctx.putImageData(imageData, 0, 0);
 
   const trimmedBitmap = await canvasToBitmap(canvas);
-  return {
-    trimmedBitmap,
-    trimmedWidth: newW,
-    trimmedHeight: newH,
-  };
+  return { trimmedBitmap, trimmedWidth: srcW, trimmedHeight: srcH };
 }
 
 // ---------------------------------------------------------------------------
