@@ -497,7 +497,6 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
         const beforeImg = html.querySelector("#dpog-before-img");
         const afterImg = html.querySelector("#dpog-after-img");
         const afterName = html.querySelector("#dpog-after-name");
-        const ringOverlay = html.querySelector("#dpog-ring-overlay");
         const exportRingBtn = html.querySelector("#dpog-export-ring");
 
         try {
@@ -514,24 +513,47 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
             const basename = filePath.split('/').pop() || filePath;
             this._lastSourceBasename = basename;
 
-            // Show processed result in the After panel via object URL
+            // Show processed result with ring drawn
             if (afterImg) {
                 // Revoke previous object URL to avoid memory leaks
                 if (afterImg._objectUrl) {
                     URL.revokeObjectURL(afterImg._objectUrl);
                 }
-                const url = URL.createObjectURL(result.blob);
+
+                // Load the processed blob, draw ring, create new blob
+                const canvas = document.createElement("canvas");
+                canvas.width = result.afterData.canvasSize;
+                canvas.height = result.afterData.canvasSize;
+                const ctx = canvas.getContext("2d");
+
+                const img = await new Promise((resolve, reject) => {
+                    const i = new Image();
+                    i.onload = () => resolve(i);
+                    i.onerror = reject;
+                    i.src = URL.createObjectURL(result.blob);
+                });
+
+                ctx.drawImage(img, 0, 0);
+
+                // Draw ring circle
+                const cx = result.afterData.canvasSize / 2;
+                const cy = result.afterData.canvasSize / 2;
+                const r = result.afterData.ringDiameter / 2;
+                ctx.beginPath();
+                ctx.arc(cx, cy, r, 0, 2 * Math.PI);
+                ctx.strokeStyle = "rgba(255, 255, 255, 0.85)";
+                ctx.lineWidth = Math.max(2, Math.round(result.afterData.ringDiameter * 0.012));
+                ctx.stroke();
+
+                // Create new blob with ring
+                const ringBlob = await new Promise((resolve, reject) => {
+                    canvas.toBlob(b => b ? resolve(b) : reject(new Error("toBlob returned null")),
+                        this._settings.format, this._settings.quality);
+                });
+
+                const url = URL.createObjectURL(ringBlob);
                 afterImg._objectUrl = url;
                 afterImg.src = url;
-            }
-
-            // Update ring overlay
-            if (ringOverlay) {
-                const ratio = result.afterData.ringDiameter / result.afterData.canvasSize;
-                const pct = Math.round(ratio * 100);
-                ringOverlay.style.width = `${pct}%`;
-                ringOverlay.style.height = `${pct}%`;
-                ringOverlay.classList.add("dpog-ring-visible");
             }
 
             // Enable export ring button
@@ -546,10 +568,6 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
                 afterName.textContent = `${result.afterData.width}\u00d7${result.afterData.height} (${ringLabel}${modeLabel})`;
             }
         } catch (err) {
-            // Hide ring overlay on error
-            if (ringOverlay) {
-                ringOverlay.classList.remove("dpog-ring-visible");
-            }
             // Disable export ring button
             if (exportRingBtn) {
                 exportRingBtn.disabled = true;
@@ -676,7 +694,7 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
         }
         this._debounceTimer = setTimeout(() => {
             this._onSettingsChange();
-        }, 300);
+        }, 150);
     }
 }
 
