@@ -48,6 +48,7 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
         mode: 'optimized',
         format: 'image/webp',
         quality: 0.92,
+        ringOverride: 'auto',
     };
 
     /** @type {string|null} Current source file path */
@@ -61,6 +62,12 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
 
     /** @type {number|null} Debounce timer ID */
     _debounceTimer = null;
+
+    /** @type {Object|null} Last processToken result (for ring export) */
+    _lastResult = null;
+
+    /** @type {string|null} Last source basename (for ring export filename) */
+    _lastSourceBasename = null;
 
     /** @override */
     static PARTS = {
@@ -79,7 +86,7 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
      */
     static async #onSubmit(event, form, formData) {
         // Processing logic — Phase 2+
-        ui.notifications.info("Processing tokens...");
+        ui.notifications.info(game.i18n.localize("DynPog.ProcessingTokens"));
     }
 
     /** @override */
@@ -90,9 +97,93 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
     }
 
     /** @override */
+    _onFirstRender(context, options) {
+        super._onFirstRender(context, options);
+        this._restoreSettings();
+    }
+
+    /** @override */
     _onRender(context, options) {
         super._onRender(context, options);
         this.#bindEvents();
+    }
+
+    /**
+     * Save current settings to Foundry game settings before closing.
+     * @override
+     */
+    async close(options = {}) {
+        this._saveSettings();
+        return super.close(options);
+    }
+
+    /**
+     * Restore settings from Foundry game settings and apply to UI.
+     */
+    _restoreSettings() {
+        try {
+            const saved = game.settings.get('dynamic-pog-tokens', 'lastSettings');
+            if (saved && saved !== '{}') {
+                const parsed = JSON.parse(saved);
+                this._settings = { ...this._settings, ...parsed };
+                this._applySettingsToUI();
+            }
+        } catch (e) {
+            console.warn('[DynPog] Failed to restore settings:', e);
+        }
+    }
+
+    /**
+     * Save current settings to Foundry game settings.
+     */
+    _saveSettings() {
+        try {
+            game.settings.set('dynamic-pog-tokens', 'lastSettings', JSON.stringify(this._settings));
+        } catch (e) {
+            console.warn('[DynPog] Failed to save settings:', e);
+        }
+    }
+
+    /**
+     * Apply this._settings values to the form controls in the DOM.
+     */
+    _applySettingsToUI() {
+        const html = this.element;
+        if (!html) return;
+
+        // Trim
+        const trimInput = html.querySelector("#dpog-trim");
+        if (trimInput) trimInput.value = this._settings.trimPx;
+
+        // Mask checkbox
+        const maskCheck = html.querySelector("#dpog-mask");
+        if (maskCheck) {
+            maskCheck.checked = this._settings.maskEnabled;
+            const thresholdRow = html.querySelector(".dpog-threshold-row");
+            if (thresholdRow) {
+                thresholdRow.classList.toggle("dpog-hidden", !this._settings.maskEnabled);
+            }
+        }
+
+        // Threshold
+        const thresholdSlider = html.querySelector("#dpog-threshold");
+        if (thresholdSlider) thresholdSlider.value = this._settings.maskThreshold;
+        const valueSpan = html.querySelector("#dpog-threshold-value");
+        if (valueSpan) valueSpan.textContent = this._settings.maskThreshold;
+
+        // Quality mode
+        const modeValue = this._settings.mode === 'quick' ? 'quick' : 'optimized';
+        const modeRadio = html.querySelector(`input[name='quality'][value='${modeValue}']`);
+        if (modeRadio) modeRadio.checked = true;
+
+        // Export format
+        const fmtValue = this._settings.format === 'image/png' ? 'png' : 'webp';
+        const fmtRadio = html.querySelector(`input[name='exportFormat'][value='${fmtValue}']`);
+        if (fmtRadio) fmtRadio.checked = true;
+
+        // Ring override
+        const ringSelect = html.querySelector("#dpog-ring-select");
+        if (ringSelect) ringSelect.value = this._settings.ringOverride || 'auto';
     }
 
     /**
@@ -163,12 +254,27 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
             radio.addEventListener("change", () => this._onSettingsChange());
         });
 
+        // Ring size select — immediate re-process
+        const ringSelect = html.querySelector("#dpog-ring-select");
+        if (ringSelect) {
+            ringSelect.addEventListener("change", () => this._onSettingsChange());
+        }
+
         // Destination folder browse button
         const destBtn = html.querySelector("#dpog-browse-dest");
         if (destBtn) {
             destBtn.addEventListener("click", (ev) => {
                 ev.preventDefault();
                 this._onBrowseDest();
+            });
+        }
+
+        // Export With Ring button
+        const exportRingBtn = html.querySelector("#dpog-export-ring");
+        if (exportRingBtn) {
+            exportRingBtn.addEventListener("click", async (ev) => {
+                ev.preventDefault();
+                await this._exportWithRing();
             });
         }
 
@@ -298,7 +404,11 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
                         progressText.textContent = `${percent}%`;
                     }
                     if (progressStatus) {
-                        progressStatus.textContent = `Processing: ${basename} (${processed}/${total})`;
+                        progressStatus.textContent = game.i18n.format("DynPog.ProcessingFile", {
+                            name: basename,
+                            current: processed,
+                            total: total,
+                        });
                     }
 
                     // Process the token
@@ -330,24 +440,27 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
             if (progressText) {
                 progressText.textContent = "100%";
             }
-            const doneMsg = `Done: ${processed - errors.length} tokens processed`;
+            const doneCount = processed - errors.length;
             if (errors.length > 0) {
                 if (progressStatus) {
-                    progressStatus.textContent = `${doneMsg} (${errors.length} errors)`;
+                    progressStatus.textContent = game.i18n.format("DynPog.DoneWithErrors", {
+                        count: doneCount,
+                        errors: errors.length,
+                    });
                 }
-                ui.notifications.warn(`${doneMsg} — ${errors.length} files had errors. Check console.`);
+                ui.notifications.warn(`${game.i18n.format("DynPog.DoneWithErrors", { count: doneCount, errors: errors.length })} — ${errors.length} files had errors. Check console.`);
             } else {
                 if (progressStatus) {
-                    progressStatus.textContent = doneMsg;
+                    progressStatus.textContent = game.i18n.format("DynPog.Done", { count: doneCount });
                 }
-                ui.notifications.info(doneMsg);
+                ui.notifications.info(game.i18n.format("DynPog.Done", { count: doneCount }));
             }
         } catch (err) {
             console.error("[DynPog] Batch processing failed:", err);
             if (progressStatus) {
-                progressStatus.textContent = `Error: ${err.message}`;
+                progressStatus.textContent = game.i18n.format("DynPog.BatchError", { message: err.message });
             }
-            ui.notifications.error(`Batch processing failed: ${err.message}`);
+            ui.notifications.error(game.i18n.format("DynPog.BatchError", { message: err.message }));
         } finally {
             this._isProcessing = false;
             this._checkProcessAllEnabled();
@@ -363,6 +476,8 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
         const beforeImg = html.querySelector("#dpog-before-img");
         const afterImg = html.querySelector("#dpog-after-img");
         const afterName = html.querySelector("#dpog-after-name");
+        const ringOverlay = html.querySelector("#dpog-ring-overlay");
+        const exportRingBtn = html.querySelector("#dpog-export-ring");
 
         try {
             // Show source image in the Before panel
@@ -372,6 +487,11 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
 
             // Run processing pipeline
             const result = await processToken(filePath, this._settings);
+
+            // Store result for ring export
+            this._lastResult = result;
+            const basename = filePath.split('/').pop() || filePath;
+            this._lastSourceBasename = basename;
 
             // Show processed result in the After panel via object URL
             if (afterImg) {
@@ -384,11 +504,35 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
                 afterImg.src = url;
             }
 
+            // Update ring overlay
+            if (ringOverlay) {
+                const ratio = result.afterData.ringDiameter / result.afterData.canvasSize;
+                const pct = Math.round(ratio * 100);
+                ringOverlay.style.width = `${pct}%`;
+                ringOverlay.style.height = `${pct}%`;
+                ringOverlay.classList.add("dpog-ring-visible");
+            }
+
+            // Enable export ring button
+            if (exportRingBtn) {
+                exportRingBtn.disabled = false;
+            }
+
             // Display size info
             if (afterName) {
-                afterName.textContent = `${result.afterData.width}\u00d7${result.afterData.height} (${result.afterData.targetRing})`;
+                const ringLabel = result.afterData.targetRing;
+                const modeLabel = result.stats.mode === 'override' ? ' [override]' : '';
+                afterName.textContent = `${result.afterData.width}\u00d7${result.afterData.height} (${ringLabel}${modeLabel})`;
             }
         } catch (err) {
+            // Hide ring overlay on error
+            if (ringOverlay) {
+                ringOverlay.classList.remove("dpog-ring-visible");
+            }
+            // Disable export ring button
+            if (exportRingBtn) {
+                exportRingBtn.disabled = true;
+            }
             // Display error in the After panel
             if (afterName) {
                 afterName.textContent = `Error: ${err.message}`;
@@ -396,6 +540,86 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
             if (afterImg) {
                 afterImg.src = '';
             }
+        }
+    }
+
+    /**
+     * Export the current preview with the ring drawn as a solid circle overlay.
+     */
+    async _exportWithRing() {
+        if (!this._lastResult || !this._destPath) {
+            ui.notifications.warn(game.i18n.localize("DynPog.NoImage"));
+            return;
+        }
+
+        try {
+            // Re-process to get the final canvas with ring drawn
+            // We re-run processToken to get access to the final canvas
+            const result = await processToken(this._sourcePath, this._settings);
+
+            // We need the finalCanvas. Since processToken returns a blob,
+            // we need to draw the ring on a separate copy.
+            // Load the original source image
+            const { imageBitmap } = await loadImage(this._sourcePath);
+
+            // Figure out the after dimensions
+            const afterData = result.afterData;
+            const canvasSize = afterData.canvasSize;
+            const ringDiameter = afterData.ringDiameter;
+
+            // Create a canvas, draw the processed result, then overlay the ring
+            const canvas = document.createElement('canvas');
+            canvas.width = canvasSize;
+            canvas.height = canvasSize;
+            const ctx = canvas.getContext('2d');
+
+            // Draw the processed blob onto the canvas
+            const blobUrl = URL.createObjectURL(result.blob);
+            const img = new Image();
+            await new Promise((resolve, reject) => {
+                img.onload = resolve;
+                img.onerror = reject;
+                img.src = blobUrl;
+            });
+            ctx.drawImage(img, 0, 0);
+            URL.revokeObjectURL(blobUrl);
+
+            // Draw the ring as a solid circle
+            const centerX = canvasSize / 2;
+            const centerY = canvasSize / 2;
+            const radius = ringDiameter / 2;
+
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.lineWidth = Math.max(2, Math.round(ringDiameter * 0.01));
+            ctx.stroke();
+
+            // Export
+            const blob = await new Promise((resolve, reject) => {
+                canvas.toBlob(
+                    (b) => {
+                        if (b) resolve(b);
+                        else reject(new Error('Canvas toBlob returned null'));
+                    },
+                    this._settings.format,
+                    this._settings.quality,
+                );
+            });
+
+            // Build filename
+            const nameWithoutExt = (this._lastSourceBasename || 'token').replace(/\.[^.]+$/, '');
+            const ext = this._settings.format === 'image/png' ? '.png' : '.webp';
+            const outputName = 'ring_preview_' + nameWithoutExt + ext;
+
+            // Upload
+            const file = new File([blob], outputName, { type: this._settings.format });
+            await FilePicker.upload(this._destPath, null, file, {});
+
+            ui.notifications.info(`Ring preview exported: ${outputName}`);
+        } catch (err) {
+            console.error('[DynPog] Export with ring failed:', err);
+            ui.notifications.error(`Export with ring failed: ${err.message}`);
         }
     }
 
@@ -414,6 +638,7 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
         this._settings.format = html.querySelector("input[name='exportFormat'][value='webp']")?.checked
             ? 'image/webp'
             : 'image/png';
+        this._settings.ringOverride = html.querySelector("#dpog-ring-select")?.value || 'auto';
 
         // Re-process if a source is already loaded
         if (this._sourcePath) {
@@ -439,6 +664,14 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
  * Registers hooks and adds UI controls.
  */
 export function initDynamicPogTokens() {
+    // Register game settings for persistence
+    game.settings.register('dynamic-pog-tokens', 'lastSettings', {
+        scope: 'world',
+        config: false,
+        default: '{}',
+        type: String,
+    });
+
     // Register a scene control button to open the app
     Hooks.on("getSceneControlButtons", (controls) => {
         const tokenControls = controls.find(c => c.name === "token");

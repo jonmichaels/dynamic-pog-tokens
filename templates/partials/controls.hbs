@@ -40,11 +40,14 @@
 
     <!-- Ring size select -->
     <div class="dpog-control-row">
-        <label class="dpog-control-label" for="dpog-ring-size">{{i18n "DynPog.RingSize"}}</label>
-        <select id="dpog-ring-size" name="ringSize" class="dpog-select">
-            <option value="256">256px</option>
-            <option value="512" selected>512px</option>
-            <option value="1024">1024px</option>
+        <label class="dpog-control-label" for="dpog-ring-select">{{i18n "DynPog.RingSize"}}</label>
+        <select id="dpog-ring-select" name="ringSize" class="dpog-select">
+            <option value="auto" selected>{{i18n "DynPog.RingAuto"}}</option>
+            <option value="tiny">{{i18n "DynPog.RingTiny"}}</option>
+            <option value="sm">{{i18n "DynPog.RingSmallMedium"}}</option>
+            <option value="lg">{{i18n "DynPog.RingLarge"}}</option>
+            <option value="huge">{{i18n "DynPog.RingHuge"}}</option>
+            <option value="grg">{{i18n "DynPog.RingGargantuan"}}</option>
         </select>
     </div>
 
@@ -54,11 +57,11 @@
         <div class="dpog-radio-group">
             <label class="dpog-radio-label">
                 <input type="radio" name="exportFormat" value="webp" checked />
-                <span>WEBP</span>
+                <span>{{i18n "DynPog.Webp"}}</span>
             </label>
             <label class="dpog-radio-label">
                 <input type="radio" name="exportFormat" value="png" />
-                <span>PNG</span>
+                <span>{{i18n "DynPog.Png"}}</span>
             </label>
         </div>
     </div>

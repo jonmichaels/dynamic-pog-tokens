@@ -503,6 +503,7 @@ export async function exportImage(canvas, format = 'image/webp', quality = 0.92)
  * @param {boolean} [options.maskEnabled=true]  Enable corner-flood background mask
  * @param {number} [options.maskThreshold=128]  Mask aggressiveness 0-255
  * @param {'quick'|'optimized'} [options.mode='optimized']  Sizing strategy
+ * @param {string} [options.ringOverride]  Force a specific ring size name ('tiny'|'sm'|'med'|'lg'|'huge'|'grg'). Overrides auto-sizing.
  * @param {'image/webp'|'image/png'} [options.format='image/webp']  Export format
  * @param {number} [options.quality=0.92]  Export quality (WEBP only)
  *
@@ -519,6 +520,7 @@ export async function processToken(src, options = {}) {
     maskEnabled = true,
     maskThreshold = 128,
     mode = 'optimized',
+    ringOverride = null,
     format = 'image/webp',
     quality = 0.92,
   } = options;
@@ -555,8 +557,23 @@ export async function processToken(src, options = {}) {
   }
   steps.push('mask');
 
-  // --- Step 4: Calculate target size ---
-  const sizing = calculateTargetSize(workingW, workingH, mode);
+  // --- Step 4: Calculate target size (or use override) ---
+  let sizing;
+  if (ringOverride && ringOverride !== 'auto') {
+    const ringEntry = RING_SIZES.find(r => r.name === ringOverride);
+    if (ringEntry) {
+      sizing = {
+        ringDiameter: ringEntry.ring,
+        canvasSize: ringEntry.canvas,
+        targetRing: ringEntry.name,
+        mode: 'override',
+      };
+    } else {
+      sizing = calculateTargetSize(workingW, workingH, mode);
+    }
+  } else {
+    sizing = calculateTargetSize(workingW, workingH, mode);
+  }
   steps.push('size');
 
   // --- Step 5: Resize to ring ---
