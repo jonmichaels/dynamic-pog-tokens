@@ -562,16 +562,9 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
             this._lastResult = result;
             this._lastSourceBasename = filePath.split('/').pop() || filePath;
 
-            // --- Before panel: source at 66.8% scale, centered on same canvas as After ---
+            // --- Before panel: source at 66.8% scale, centred with checkerboard padding ---
             if (beforeImg) {
                 if (beforeImg._objectUrl) URL.revokeObjectURL(beforeImg._objectUrl);
-
-                const cs = result.afterData.canvasSize;
-                const canvas = document.createElement("canvas");
-                canvas.width = cs;
-                canvas.height = cs;
-                const ctx = canvas.getContext("2d");
-                this._drawCheckerboard(ctx, cs, cs);
 
                 const srcImg = await new Promise((resolve, reject) => {
                     const i = new Image();
@@ -581,11 +574,27 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
                 });
 
                 const scale = 0.668;
-                const dw = srcImg.naturalWidth * scale;
-                const dh = srcImg.naturalHeight * scale;
-                const dx = (cs - dw) / 2;
-                const dy = (cs - dh) / 2;
-                ctx.drawImage(srcImg, dx, dy, dw, dh);
+                const pad = 16; // checkerboard padding around image
+                const iw = Math.round(srcImg.naturalWidth * scale);
+                const ih = Math.round(srcImg.naturalHeight * scale);
+                const cw = iw + pad * 2;
+                const ch = ih + pad * 2;
+
+                const canvas = document.createElement("canvas");
+                canvas.width = cw;
+                canvas.height = ch;
+                const ctx = canvas.getContext("2d");
+
+                // 1. Checkerboard over entire canvas (shows in padding areas)
+                this._drawCheckerboard(ctx, cw, ch);
+
+                // 2. Draw source image at 66.8%, offset by pad
+                ctx.drawImage(srcImg, pad, pad, iw, ih);
+
+                // 3. Light gray box around the token boundary
+                ctx.strokeStyle = "#888888";
+                ctx.lineWidth = 1;
+                ctx.strokeRect(pad - 0.5, pad - 0.5, iw + 1, ih + 1);
 
                 const blob = await new Promise((resolve, reject) => {
                     canvas.toBlob(b => b ? resolve(b) : reject(new Error("toBlob null")), "image/png");
@@ -595,7 +604,11 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
                 beforeImg.src = url;
             }
             if (beforeName) {
-                beforeName.textContent = `${result.beforeData.width}\u00d7${result.beforeData.height}`;
+                const srcW = result.beforeData.width;
+                const srcH = result.beforeData.height;
+                const scaledW = Math.round(srcW * 0.668);
+                const scaledH = Math.round(srcH * 0.668);
+                beforeName.textContent = `${srcW}\u00d7${srcH} (${scaledW}\u00d7${scaledH} at 67%)`;
             }
 
             // --- After panel: checkerboard → token → ring ---
