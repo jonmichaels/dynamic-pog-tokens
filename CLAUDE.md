@@ -62,10 +62,32 @@ ApplicationV2 wraps the app in `#dynamic-pog-tokens` (matching `DEFAULT_OPTIONS.
 ## Dynamic Token Rings Integration
 
 ### How It Works (Core Foundry Feature)
-Dynamic Token Rings uses the token's **grid size** (1×1, 2×2, etc.) and the active spritesheet to select a ring. The ring sizes are determined by the `gridTarget` values in the spritesheet JSON — these don't change when the user switches ring styles (Steel → Bronze, etc.). Ring styles only change the visual appearance and effects. The pixel dimensions are spritesheet-invariant.
+Dynamic Token Rings uses the token's **grid size** (1×1, 2×2, etc.) and the active spritesheet to select a ring. Ring sizes are determined by `gridTarget` values in the spritesheet JSON — these don't change when switching ring styles (Steel → Bronze). Only visual appearance changes.
+
+### Spritesheet Structure (Foundry v13)
+Spritesheets at `canvas/tokens/rings-steel.json` + `rings-steel.webp` (and bronze variants):
+
+| Frame Name | gridTarget | Size | Spritesheet Coords |
+|---|---|---|---|
+| token-ring-tiny | 0.5 | 256×256 | (3328, 2048) |
+| token-ring-med | 1 | 512×512 | (2560, 2048) |
+| token-ring-large-huge | 2 | 1024×1024 | (1024, 2048) |
+| token-ring-gargantuan | 3 | 2048×2048 | (2048, 0) |
+
+Background frames with `-bkg` suffix have same sizes at different coordinates.
+
+### Active Ring Detection
+```js
+const ringConfigId = game.settings.get("core", "dynamicTokenRing") || "coreSteel";
+const config = CONFIG.Token.ring.getConfig(ringConfigId);
+config.spritesheet; // "canvas/tokens/rings-steel.json"
+```
+
+### Ring Compositing in Preview
+`_loadAndPreview` composites: checkerboard (transparency) → token → ring texture (extracted from spritesheet frame). The ring frame is selected by matching the output canvas size (256/512/1024/2048) to the spritesheet frame.
 
 ### Current State (Hardcoded)
-Ring sizes are hardcoded in `pog-processor.js` — `RING_SIZES` table. Matches standard dnd5e/Black Flag sizes:
+Ring sizes are hardcoded in `pog-processor.js` — `RING_SIZES` table: Matches standard dnd5e/Black Flag sizes:
 ```js
 const RING_SIZES = [
   { name: 'tiny', ring: 172, canvas: 256 },
