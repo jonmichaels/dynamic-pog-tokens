@@ -31,7 +31,7 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
         },
         position: {
             width: 640,
-            height: 520,
+            height: 700,
         },
         form: {
             handler: PogTokensApp.#onSubmit,
