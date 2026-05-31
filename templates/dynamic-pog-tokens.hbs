@@ -1,0 +1,21 @@
+<!-- Dynamic Pog Tokens — main layout -->
+<div class="dpog-app">
+    <!-- Before/After image panels -->
+    {{> "modules/dynamic-pog-tokens/templates/partials/before-after.hbs"}}
+
+    <!-- Controls section -->
+    {{> "modules/dynamic-pog-tokens/templates/partials/controls.hbs"}}
+
+    <!-- Progress bar -->
+    {{> "modules/dynamic-pog-tokens/templates/partials/progress.hbs"}}
+
+    <!-- Action buttons -->
+    <div class="dpog-action-section">
+        <button type="button" id="dpog-select-images" class="dpog-select-btn">
+            <i class="fa-solid fa-folder-open"></i> {{i18n "DynPog.SelectImages"}}
+        </button>
+        <button type="submit" id="dpog-process-btn" class="dpog-process-btn">
+            <i class="fa-solid fa-gears"></i> {{i18n "DynPog.Process"}}
+        </button>
+    </div>
+</div>

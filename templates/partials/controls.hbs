@@ -1,0 +1,65 @@
+<!-- Controls panel: quality, trim, mask, ring size, export format -->
+<div class="dpog-controls">
+    <!-- Quality radio: Quick vs Optimized -->
+    <div class="dpog-control-row">
+        <label class="dpog-control-label">{{i18n "DynPog.Quality"}}</label>
+        <div class="dpog-radio-group">
+            <label class="dpog-radio-label">
+                <input type="radio" name="quality" value="quick" checked />
+                <span>{{i18n "DynPog.Quick"}}</span>
+            </label>
+            <label class="dpog-radio-label">
+                <input type="radio" name="quality" value="optimized" />
+                <span>{{i18n "DynPog.Optimized"}}</span>
+            </label>
+        </div>
+    </div>
+
+    <!-- Trim control -->
+    <div class="dpog-control-row">
+        <label class="dpog-control-label" for="dpog-trim">{{i18n "DynPog.Trim"}}</label>
+        <input type="number" id="dpog-trim" name="trim" value="0" min="0" max="100" step="1" class="dpog-number-input" />
+        <span class="dpog-unit">{{i18n "DynPog.Pixels"}}</span>
+    </div>
+
+    <!-- Mask checkbox -->
+    <div class="dpog-control-row">
+        <label class="dpog-control-label">{{i18n "DynPog.Mask"}}</label>
+        <label class="dpog-checkbox-label">
+            <input type="checkbox" id="dpog-mask" name="mask" />
+            <span>{{i18n "DynPog.EnableMask"}}</span>
+        </label>
+    </div>
+
+    <!-- Mask threshold slider (hidden when mask is unchecked) -->
+    <div class="dpog-control-row dpog-threshold-row dpog-hidden">
+        <label class="dpog-control-label" for="dpog-threshold">{{i18n "DynPog.Threshold"}}</label>
+        <input type="range" id="dpog-threshold" name="threshold" value="128" min="0" max="255" step="1" class="dpog-range-input" />
+        <span class="dpog-range-value" id="dpog-threshold-value">128</span>
+    </div>
+
+    <!-- Ring size select -->
+    <div class="dpog-control-row">
+        <label class="dpog-control-label" for="dpog-ring-size">{{i18n "DynPog.RingSize"}}</label>
+        <select id="dpog-ring-size" name="ringSize" class="dpog-select">
+            <option value="256">256px</option>
+            <option value="512" selected>512px</option>
+            <option value="1024">1024px</option>
+        </select>
+    </div>
+
+    <!-- Export format radio -->
+    <div class="dpog-control-row">
+        <label class="dpog-control-label">{{i18n "DynPog.ExportFormat"}}</label>
+        <div class="dpog-radio-group">
+            <label class="dpog-radio-label">
+                <input type="radio" name="exportFormat" value="webp" checked />
+                <span>WEBP</span>
+            </label>
+            <label class="dpog-radio-label">
+                <input type="radio" name="exportFormat" value="png" />
+                <span>PNG</span>
+            </label>
+        </div>
+    </div>
+</div>

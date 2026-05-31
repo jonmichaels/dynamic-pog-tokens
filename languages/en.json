@@ -1,0 +1,26 @@
+{
+    "DynPog": {
+        "Title": "Dynamic Pog Tokens",
+        "Before": "Before",
+        "After": "After",
+        "BeforeAlt": "Original pog token image",
+        "AfterAlt": "Processed dynamic ring token",
+        "NoImage": "No image selected",
+        "SelectImages": "Select Images",
+        "Process": "Process Tokens",
+        "Quality": "Quality",
+        "Quick": "Quick",
+        "Optimized": "Optimized",
+        "Trim": "Trim",
+        "Pixels": "px",
+        "Mask": "Mask",
+        "EnableMask": "Enable circular mask",
+        "Threshold": "Threshold",
+        "RingSize": "Ring Size",
+        "ExportFormat": "Export",
+        "Ready": "Ready",
+        "Processing": "Processing...",
+        "Complete": "Processing complete",
+        "Error": "An error occurred during processing"
+    }
+}

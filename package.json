@@ -1,0 +1,19 @@
+{
+  "name": "dynamic-pog-tokens",
+  "version": "0.1.0",
+  "scripts": {
+    "build": "npx webpack --config webpack.config.js --mode production",
+    "watch": "npx webpack --config webpack.config.js --mode development --watch"
+  },
+  "devDependencies": {
+    "css-loader": "^7.1.2",
+    "mini-css-extract-plugin": "^2.9.2",
+    "sass": "^1.83.0",
+    "sass-loader": "^16.0.4",
+    "webpack": "^5.97.1",
+    "webpack-cli": "^6.0.1"
+  },
+  "dependencies": {
+    "pica": "^9.0.1"
+  }
+}

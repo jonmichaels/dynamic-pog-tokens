@@ -1,0 +1,12 @@
+node_modules/
+dist/
+*.zip
+.DS_Store
+.hermes/
+# Webpack build artifacts
+scripts/module.js
+scripts/module.js.map
+scripts/module.css
+scripts/module.css.map
+styles/module.js
+styles/module.js.map
