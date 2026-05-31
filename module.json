@@ -23,17 +23,6 @@
       "path": "languages/en.json"
     }
   ],
-  "relationships": {
-    "systems": [
-      {
-        "id": "dnd5e",
-        "type": "system",
-        "compatibility": {
-          "minimum": "5.0.0"
-        }
-      }
-    ]
-  },
   "compatibility": {
     "minimum": "13",
     "verified": "14"

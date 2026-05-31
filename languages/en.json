@@ -1,6 +1,7 @@
 {
     "DynPog": {
         "Title": "Dynamic Pog Tokens",
+        "ButtonLabel": "Dynamic Pog Tokens",
         "Before": "Before",
         "After": "After",
         "BeforeAlt": "Original pog token image",

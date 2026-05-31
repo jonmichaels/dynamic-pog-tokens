@@ -687,6 +687,26 @@ export function initDynamicPogTokens() {
             });
         }
     });
+
+    // Add a button to the Actor sheet header
+    Hooks.on("renderActorSheet", (app, html, data) => {
+        const element = html instanceof $ ? html[0] : html;
+        const headerActions = element.querySelector(".header-actions");
+        if (!headerActions) return;
+
+        // Prevent duplicates on re-render
+        if (headerActions.querySelector(".dpog-header-btn")) return;
+
+        const button = document.createElement("a");
+        button.classList.add("dpog-header-btn");
+        button.setAttribute("data-tooltip", "DynPog.Title");
+        button.setAttribute("aria-label", game.i18n.localize("DynPog.Title"));
+        button.innerHTML = `<i class="fa-solid fa-circle-notch"></i> ${game.i18n.localize("DynPog.ButtonLabel")}`;
+        button.addEventListener("click", () => {
+            new PogTokensApp().render(true);
+        });
+        headerActions.appendChild(button);
+    });
 }
 
 export { PogTokensApp };
