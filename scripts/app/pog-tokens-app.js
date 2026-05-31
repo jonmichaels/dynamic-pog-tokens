@@ -663,9 +663,9 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
  * Initialize the Dynamic Pog Tokens module.
  * Registers hooks and adds UI controls.
  */
-export function initDynamicPogTokens() {
+export async function initDynamicPogTokens() {
     // Preload template partials (must happen before any render)
-    loadTemplates([
+    await loadTemplates([
         "modules/dynamic-pog-tokens/templates/partials/before-after.hbs",
         "modules/dynamic-pog-tokens/templates/partials/controls.hbs",
         "modules/dynamic-pog-tokens/templates/partials/progress.hbs",
