@@ -688,24 +688,23 @@ export function initDynamicPogTokens() {
         }
     });
 
-    // Add a button to the Actor sheet header
-    Hooks.on("renderActorSheet", (app, html, data) => {
-        const element = html instanceof $ ? html[0] : html;
-        const headerActions = element.querySelector(".header-actions");
-        if (!headerActions) return;
+    // Add a button to the Actor Directory sidebar footer
+    Hooks.on("renderActorDirectory", (app, html, data) => {
+        const element = html[0] || html;
+        const footer = element.querySelector(".directory-footer");
+        if (!footer) return;
 
         // Prevent duplicates on re-render
-        if (headerActions.querySelector(".dpog-header-btn")) return;
+        if (footer.querySelector(".dpog-dir-btn")) return;
 
-        const button = document.createElement("a");
-        button.classList.add("dpog-header-btn");
-        button.setAttribute("data-tooltip", "DynPog.Title");
-        button.setAttribute("aria-label", game.i18n.localize("DynPog.Title"));
+        const button = document.createElement("button");
+        button.type = "button";
+        button.classList.add("dpog-dir-btn");
         button.innerHTML = `<i class="fa-solid fa-circle-notch"></i> ${game.i18n.localize("DynPog.ButtonLabel")}`;
         button.addEventListener("click", () => {
             new PogTokensApp().render(true);
         });
-        headerActions.appendChild(button);
+        footer.appendChild(button);
     });
 }
 
