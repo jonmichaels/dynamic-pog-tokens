@@ -562,22 +562,30 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
             this._lastResult = result;
             this._lastSourceBasename = filePath.split('/').pop() || filePath;
 
-            // --- Before panel: draw source on checkerboard ---
+            // --- Before panel: source at 66.8% scale, centered on same canvas as After ---
             if (beforeImg) {
                 if (beforeImg._objectUrl) URL.revokeObjectURL(beforeImg._objectUrl);
 
+                const cs = result.afterData.canvasSize;
                 const canvas = document.createElement("canvas");
+                canvas.width = cs;
+                canvas.height = cs;
+                const ctx = canvas.getContext("2d");
+                this._drawCheckerboard(ctx, cs, cs);
+
                 const srcImg = await new Promise((resolve, reject) => {
                     const i = new Image();
                     i.onload = () => resolve(i);
                     i.onerror = reject;
                     i.src = filePath;
                 });
-                canvas.width = srcImg.naturalWidth;
-                canvas.height = srcImg.naturalHeight;
-                const ctx = canvas.getContext("2d");
-                this._drawCheckerboard(ctx, canvas.width, canvas.height);
-                ctx.drawImage(srcImg, 0, 0);
+
+                const scale = 0.668;
+                const dw = srcImg.naturalWidth * scale;
+                const dh = srcImg.naturalHeight * scale;
+                const dx = (cs - dw) / 2;
+                const dy = (cs - dh) / 2;
+                ctx.drawImage(srcImg, dx, dy, dw, dh);
 
                 const blob = await new Promise((resolve, reject) => {
                     canvas.toBlob(b => b ? resolve(b) : reject(new Error("toBlob null")), "image/png");
