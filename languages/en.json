@@ -8,6 +8,7 @@
         "AfterAlt": "Processed dynamic ring token",
         "NoImage": "No image selected",
         "SelectImages": "Select Images",
+        "SelectFolder": "Select Folder",
         "Process": "Process Tokens",
         "ProcessAll": "Process All",
         "ExportRing": "Export With Ring",

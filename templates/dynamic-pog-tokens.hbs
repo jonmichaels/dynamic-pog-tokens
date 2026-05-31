@@ -6,7 +6,7 @@
         <div class="dpog-image-panel">
             <h4 class="dpog-panel-label">{{localize "DynPog.Before"}}</h4>
             <div class="dpog-image-container">
-                <img id="dpog-before-img" src="" alt="{{localize 'DynPog.BeforeAlt'}}" />
+                <img id="dpog-before-img" src="icons/svg/image.svg" alt="{{localize 'DynPog.BeforeAlt'}}" />
             </div>
             <span class="dpog-image-name" id="dpog-before-name">{{localize "DynPog.NoImage"}}</span>
         </div>
@@ -15,7 +15,7 @@
         <div class="dpog-image-panel">
             <h4 class="dpog-panel-label">{{localize "DynPog.After"}}</h4>
             <div class="dpog-image-container">
-                <img id="dpog-after-img" src="" alt="{{localize 'DynPog.AfterAlt'}}" />
+                <img id="dpog-after-img" src="icons/svg/image.svg" alt="{{localize 'DynPog.AfterAlt'}}" />
                 <div class="dpog-ring-overlay" id="dpog-ring-overlay"></div>
             </div>
             <span class="dpog-image-name" id="dpog-after-name">{{localize "DynPog.NoImage"}}</span>
@@ -121,8 +121,9 @@
     <!-- Action buttons -->
     <div class="dpog-action-section">
         <button type="button" id="dpog-select-images" class="dpog-select-btn">
-            <i class="fa-solid fa-folder-open"></i> {{localize "DynPog.SelectImages"}}
+            <i class="fa-solid fa-folder-open"></i> {{localize "DynPog.SelectFolder"}}
         </button>
+        <span class="dpog-dest-path" id="dpog-source-path"></span>
         <button type="submit" id="dpog-process-btn" class="dpog-process-btn">
             <i class="fa-solid fa-gears"></i> {{localize "DynPog.Process"}}
         </button>

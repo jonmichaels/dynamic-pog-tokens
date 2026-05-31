@@ -51,8 +51,11 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
         ringOverride: 'auto',
     };
 
-    /** @type {string|null} Current source file path */
-    _sourcePath = null;
+    /** @type {string|null} Current source folder path */
+    _sourceDir = null;
+
+    /** @type {string|null} Current preview image path */
+    _previewPath = null;
 
     /** @type {string|null} Current destination folder path */
     _destPath = null;
@@ -206,8 +209,8 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
         if (previewBtn) {
             previewBtn.addEventListener("click", async (ev) => {
                 ev.preventDefault();
-                if (this._sourcePath) {
-                    await this._loadAndPreview(this._sourcePath);
+                if (this._previewPath) {
+                    await this._loadAndPreview(this._previewPath);
                 }
             });
         }
@@ -289,14 +292,32 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
     }
 
     /**
-     * Open Foundry's FilePicker to browse for a source image.
+     * Open Foundry's FilePicker to browse for a source folder.
+     * Auto-selects the first image in the folder for preview.
      */
-    _onBrowseSource() {
+    async _onBrowseSource() {
         new FilePicker({
-            type: 'image',
-            callback: (filePath) => {
-                this._sourcePath = filePath;
-                this._loadAndPreview(filePath);
+            type: 'folder',
+            callback: async (folderPath) => {
+                this._sourceDir = folderPath.endsWith('/') ? folderPath : folderPath + '/';
+                // Display the folder path
+                const srcDisplay = this.element.querySelector("#dpog-source-path");
+                if (srcDisplay) srcDisplay.textContent = this._sourceDir;
+
+                // Browse folder for first image to preview
+                try {
+                    const result = await FilePicker.browse("data", this._sourceDir);
+                    const exts = ['.png', '.webp', '.jpg', '.jpeg'];
+                    const firstImage = result.files.find(f =>
+                        exts.some(e => f.toLowerCase().endsWith(e))
+                    );
+                    if (firstImage) {
+                        this._previewPath = firstImage;
+                        this._loadAndPreview(firstImage);
+                    }
+                } catch (e) {
+                    console.warn('[DynPog] Could not browse folder for preview:', e);
+                }
                 this._checkProcessAllEnabled();
             },
         }).browse();
@@ -326,7 +347,7 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
     _checkProcessAllEnabled() {
         const btn = this.element.querySelector("#dpog-process-all");
         if (btn) {
-            btn.disabled = !(this._sourcePath && this._destPath && !this._isProcessing);
+            btn.disabled = !(this._sourceDir && this._destPath && !this._isProcessing);
         }
     }
 
@@ -334,7 +355,7 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
      * Batch-process all images in the source directory, save to destination.
      */
     async _processAll() {
-        if (this._isProcessing || !this._sourcePath || !this._destPath) {
+        if (this._isProcessing || !this._sourceDir || !this._destPath) {
             return;
         }
 
@@ -373,7 +394,7 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
             }
 
             // Scan source directory for image files
-            const browseResult = await FilePicker.browse(this._sourcePath);
+            const browseResult = await FilePicker.browse("data", this._sourceDir);
             const imageExtensions = ['.png', '.webp', '.jpg', '.jpeg'];
             const imageFiles = browseResult.files.filter(f => {
                 const lower = f.toLowerCase();
@@ -555,12 +576,12 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
         try {
             // Re-process to get the final canvas with ring drawn
             // We re-run processToken to get access to the final canvas
-            const result = await processToken(this._sourcePath, this._settings);
+            const result = await processToken(this._previewPath, this._settings);
 
             // We need the finalCanvas. Since processToken returns a blob,
             // we need to draw the ring on a separate copy.
             // Load the original source image
-            const { imageBitmap } = await loadImage(this._sourcePath);
+            const { imageBitmap } = await loadImage(this._previewPath);
 
             // Figure out the after dimensions
             const afterData = result.afterData;
@@ -640,9 +661,9 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
             : 'image/png';
         this._settings.ringOverride = html.querySelector("#dpog-ring-select")?.value || 'auto';
 
-        // Re-process if a source is already loaded
-        if (this._sourcePath) {
-            this._loadAndPreview(this._sourcePath);
+        // Re-process if a preview image is already loaded
+        if (this._previewPath) {
+            this._loadAndPreview(this._previewPath);
         }
     }
 
