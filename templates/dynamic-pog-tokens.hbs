@@ -1,13 +1,122 @@
 <!-- Dynamic Pog Tokens — main layout -->
 <div class="dpog-app">
     <!-- Before/After image panels -->
-    {{> "modules/dynamic-pog-tokens/templates/partials/before-after"}}
+    <div class="dpog-before-after flexrow">
+        <!-- Before (original) panel -->
+        <div class="dpog-image-panel">
+            <h4 class="dpog-panel-label">{{i18n "DynPog.Before"}}</h4>
+            <div class="dpog-image-container">
+                <img id="dpog-before-img" src="" alt="{{i18n 'DynPog.BeforeAlt'}}" />
+            </div>
+            <span class="dpog-image-name" id="dpog-before-name">{{i18n "DynPog.NoImage"}}</span>
+        </div>
 
-    <!-- Controls section -->
-    {{> "modules/dynamic-pog-tokens/templates/partials/controls"}}
+        <!-- After (processed) panel -->
+        <div class="dpog-image-panel">
+            <h4 class="dpog-panel-label">{{i18n "DynPog.After"}}</h4>
+            <div class="dpog-image-container">
+                <img id="dpog-after-img" src="" alt="{{i18n 'DynPog.AfterAlt'}}" />
+                <div class="dpog-ring-overlay" id="dpog-ring-overlay"></div>
+            </div>
+            <span class="dpog-image-name" id="dpog-after-name">{{i18n "DynPog.NoImage"}}</span>
+            <button type="button" id="dpog-export-ring" class="dpog-export-ring-btn" disabled>
+                <i class="fa-solid fa-circle"></i> {{i18n "DynPog.ExportRing"}}
+            </button>
+        </div>
+    </div>
 
-    <!-- Progress bar -->
-    {{> "modules/dynamic-pog-tokens/templates/partials/progress"}}
+    <!-- Controls panel: quality, trim, mask, ring size, export format -->
+    <div class="dpog-controls">
+        <!-- Quality radio: Quick vs Optimized -->
+        <div class="dpog-control-row">
+            <label class="dpog-control-label">{{i18n "DynPog.Quality"}}</label>
+            <div class="dpog-radio-group">
+                <label class="dpog-radio-label">
+                    <input type="radio" name="quality" value="quick" checked />
+                    <span>{{i18n "DynPog.Quick"}}</span>
+                </label>
+                <label class="dpog-radio-label">
+                    <input type="radio" name="quality" value="optimized" />
+                    <span>{{i18n "DynPog.Optimized"}}</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Trim control -->
+        <div class="dpog-control-row">
+            <label class="dpog-control-label" for="dpog-trim">{{i18n "DynPog.Trim"}}</label>
+            <input type="number" id="dpog-trim" name="trim" value="0" min="0" max="100" step="1" class="dpog-number-input" />
+            <span class="dpog-unit">{{i18n "DynPog.Pixels"}}</span>
+        </div>
+
+        <!-- Mask checkbox -->
+        <div class="dpog-control-row">
+            <label class="dpog-control-label">{{i18n "DynPog.Mask"}}</label>
+            <label class="dpog-checkbox-label">
+                <input type="checkbox" id="dpog-mask" name="mask" />
+                <span>{{i18n "DynPog.EnableMask"}}</span>
+            </label>
+        </div>
+
+        <!-- Mask threshold slider (hidden when mask is unchecked) -->
+        <div class="dpog-control-row dpog-threshold-row dpog-hidden">
+            <label class="dpog-control-label" for="dpog-threshold">{{i18n "DynPog.Threshold"}}</label>
+            <input type="range" id="dpog-threshold" name="threshold" value="128" min="0" max="255" step="1" class="dpog-range-input" />
+            <span class="dpog-range-value" id="dpog-threshold-value">128</span>
+        </div>
+
+        <!-- Ring size select -->
+        <div class="dpog-control-row">
+            <label class="dpog-control-label" for="dpog-ring-select">{{i18n "DynPog.RingSize"}}</label>
+            <select id="dpog-ring-select" name="ringSize" class="dpog-select">
+                <option value="auto" selected>{{i18n "DynPog.RingAuto"}}</option>
+                <option value="tiny">{{i18n "DynPog.RingTiny"}}</option>
+                <option value="sm">{{i18n "DynPog.RingSmallMedium"}}</option>
+                <option value="lg">{{i18n "DynPog.RingLarge"}}</option>
+                <option value="huge">{{i18n "DynPog.RingHuge"}}</option>
+                <option value="grg">{{i18n "DynPog.RingGargantuan"}}</option>
+            </select>
+        </div>
+
+        <!-- Export format radio -->
+        <div class="dpog-control-row">
+            <label class="dpog-control-label">{{i18n "DynPog.ExportFormat"}}</label>
+            <div class="dpog-radio-group">
+                <label class="dpog-radio-label">
+                    <input type="radio" name="exportFormat" value="webp" checked />
+                    <span>{{i18n "DynPog.Webp"}}</span>
+                </label>
+                <label class="dpog-radio-label">
+                    <input type="radio" name="exportFormat" value="png" />
+                    <span>{{i18n "DynPog.Png"}}</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Output filename prefix -->
+        <div class="dpog-control-row">
+            <label class="dpog-control-label" for="dpog-prefix">{{i18n "DynPog.Prefix"}}</label>
+            <input type="text" id="dpog-prefix" name="prefix" value="dynamic_ring_" class="dpog-text-input" />
+        </div>
+
+        <!-- Destination folder -->
+        <div class="dpog-control-row">
+            <label class="dpog-control-label">{{i18n "DynPog.Destination"}}</label>
+            <button type="button" id="dpog-browse-dest" class="dpog-select-btn">
+                <i class="fa-solid fa-folder"></i> {{i18n "DynPog.Browse"}}
+            </button>
+            <span class="dpog-dest-path" id="dpog-dest-path"></span>
+        </div>
+    </div>
+
+    <!-- Progress bar with percentage -->
+    <div class="dpog-progress dpog-hidden" id="dpog-progress-section">
+        <div class="dpog-progress-bar">
+            <div class="dpog-progress-fill" id="dpog-progress-fill" style="width: 0%;"></div>
+        </div>
+        <span class="dpog-progress-text" id="dpog-progress-text">0%</span>
+        <span class="dpog-progress-status" id="dpog-progress-status">{{i18n "DynPog.Ready"}}</span>
+    </div>
 
     <!-- Action buttons -->
     <div class="dpog-action-section">
