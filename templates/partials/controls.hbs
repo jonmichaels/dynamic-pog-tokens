@@ -62,4 +62,19 @@
             </label>
         </div>
     </div>
+
+    <!-- Output filename prefix -->
+    <div class="dpog-control-row">
+        <label class="dpog-control-label" for="dpog-prefix">{{i18n "DynPog.Prefix"}}</label>
+        <input type="text" id="dpog-prefix" name="prefix" value="dynamic_ring_" class="dpog-text-input" />
+    </div>
+
+    <!-- Destination folder -->
+    <div class="dpog-control-row">
+        <label class="dpog-control-label">{{i18n "DynPog.Destination"}}</label>
+        <button type="button" id="dpog-browse-dest" class="dpog-select-btn">
+            <i class="fa-solid fa-folder"></i> {{i18n "DynPog.Browse"}}
+        </button>
+        <span class="dpog-dest-path" id="dpog-dest-path"></span>
+    </div>
 </div>

@@ -8,6 +8,7 @@
         "NoImage": "No image selected",
         "SelectImages": "Select Images",
         "Process": "Process Tokens",
+        "ProcessAll": "Process All",
         "Quality": "Quality",
         "Quick": "Quick",
         "Optimized": "Optimized",
@@ -18,8 +19,13 @@
         "Threshold": "Threshold",
         "RingSize": "Ring Size",
         "ExportFormat": "Export",
+        "Prefix": "Prefix",
+        "Destination": "Destination",
+        "Browse": "Browse",
         "Ready": "Ready",
         "Processing": "Processing...",
+        "Scanning": "Scanning directory...",
+        "NoImages": "No images found in source directory",
         "Complete": "Processing complete",
         "Error": "An error occurred during processing"
     }

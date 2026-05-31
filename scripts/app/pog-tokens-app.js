@@ -53,6 +53,12 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
     /** @type {string|null} Current source file path */
     _sourcePath = null;
 
+    /** @type {string|null} Current destination folder path */
+    _destPath = null;
+
+    /** @type {boolean} Whether batch processing is in progress */
+    _isProcessing = false;
+
     /** @type {number|null} Debounce timer ID */
     _debounceTimer = null;
 
@@ -156,6 +162,24 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
         formatRadios.forEach((radio) => {
             radio.addEventListener("change", () => this._onSettingsChange());
         });
+
+        // Destination folder browse button
+        const destBtn = html.querySelector("#dpog-browse-dest");
+        if (destBtn) {
+            destBtn.addEventListener("click", (ev) => {
+                ev.preventDefault();
+                this._onBrowseDest();
+            });
+        }
+
+        // Process All button
+        const processAllBtn = html.querySelector("#dpog-process-all");
+        if (processAllBtn) {
+            processAllBtn.addEventListener("click", async (ev) => {
+                ev.preventDefault();
+                await this._processAll();
+            });
+        }
     }
 
     /**
@@ -167,8 +191,167 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
             callback: (filePath) => {
                 this._sourcePath = filePath;
                 this._loadAndPreview(filePath);
+                this._checkProcessAllEnabled();
             },
         }).browse();
+    }
+
+    /**
+     * Open Foundry's FilePicker to browse for a destination folder.
+     */
+    _onBrowseDest() {
+        const fp = new FilePicker({
+            type: 'folder',
+            callback: (folderPath) => {
+                this._destPath = folderPath.endsWith('/') ? folderPath : folderPath + '/';
+                const destDisplay = this.element.querySelector("#dpog-dest-path");
+                if (destDisplay) {
+                    destDisplay.textContent = this._destPath;
+                }
+                this._checkProcessAllEnabled();
+            },
+        });
+        fp.browse();
+    }
+
+    /**
+     * Enable the Process All button only if both source and destination are selected.
+     */
+    _checkProcessAllEnabled() {
+        const btn = this.element.querySelector("#dpog-process-all");
+        if (btn) {
+            btn.disabled = !(this._sourcePath && this._destPath && !this._isProcessing);
+        }
+    }
+
+    /**
+     * Batch-process all images in the source directory, save to destination.
+     */
+    async _processAll() {
+        if (this._isProcessing || !this._sourcePath || !this._destPath) {
+            return;
+        }
+
+        this._isProcessing = true;
+        this._checkProcessAllEnabled();
+
+        const html = this.element;
+        const progressSection = html.querySelector("#dpog-progress-section");
+        const progressFill = html.querySelector("#dpog-progress-fill");
+        const progressText = html.querySelector("#dpog-progress-text");
+        const progressStatus = html.querySelector("#dpog-progress-status");
+
+        try {
+            // Read settings before processing starts
+            this._onSettingsChange();
+
+            // Get prefix from input
+            const prefixInput = html.querySelector("#dpog-prefix");
+            const prefix = prefixInput ? (prefixInput.value || "dynamic_ring_") : "dynamic_ring_";
+
+            // Determine file extension from format setting
+            const ext = this._settings.format === 'image/png' ? '.png' : '.webp';
+
+            // Show progress section
+            if (progressSection) {
+                progressSection.classList.remove("dpog-hidden");
+            }
+            if (progressFill) {
+                progressFill.style.width = "0%";
+            }
+            if (progressText) {
+                progressText.textContent = "0%";
+            }
+            if (progressStatus) {
+                progressStatus.textContent = game.i18n.localize("DynPog.Scanning");
+            }
+
+            // Scan source directory for image files
+            const browseResult = await FilePicker.browse(this._sourcePath);
+            const imageExtensions = ['.png', '.webp', '.jpg', '.jpeg'];
+            const imageFiles = browseResult.files.filter(f => {
+                const lower = f.toLowerCase();
+                return imageExtensions.some(ext => lower.endsWith(ext));
+            });
+
+            const total = imageFiles.length;
+            if (total === 0) {
+                if (progressStatus) {
+                    progressStatus.textContent = game.i18n.localize("DynPog.NoImages");
+                }
+                return;
+            }
+
+            let processed = 0;
+            let errors = [];
+
+            for (const fileUrl of imageFiles) {
+                try {
+                    // Update progress
+                    const percent = Math.round((processed / total) * 100);
+                    const basename = fileUrl.split('/').pop() || fileUrl;
+
+                    if (progressFill) {
+                        progressFill.style.width = `${percent}%`;
+                    }
+                    if (progressText) {
+                        progressText.textContent = `${percent}%`;
+                    }
+                    if (progressStatus) {
+                        progressStatus.textContent = `Processing: ${basename} (${processed}/${total})`;
+                    }
+
+                    // Process the token
+                    const result = await processToken(fileUrl, this._settings);
+
+                    // Build output filename: prefix + original basename (strip original ext, add new)
+                    const nameWithoutExt = basename.replace(/\.[^.]+$/, '');
+                    const outputName = prefix + nameWithoutExt + ext;
+
+                    // Create File object for upload
+                    const file = new File([result.blob], outputName, { type: this._settings.format });
+
+                    // Upload to destination folder
+                    await FilePicker.upload(this._destPath, null, file, {});
+
+                    processed++;
+                } catch (err) {
+                    const basename = fileUrl.split('/').pop() || fileUrl;
+                    errors.push(`${basename}: ${err.message}`);
+                    console.error(`[DynPog] Error processing ${basename}:`, err);
+                    processed++;
+                }
+            }
+
+            // Completion
+            if (progressFill) {
+                progressFill.style.width = "100%";
+            }
+            if (progressText) {
+                progressText.textContent = "100%";
+            }
+            const doneMsg = `Done: ${processed - errors.length} tokens processed`;
+            if (errors.length > 0) {
+                if (progressStatus) {
+                    progressStatus.textContent = `${doneMsg} (${errors.length} errors)`;
+                }
+                ui.notifications.warn(`${doneMsg} — ${errors.length} files had errors. Check console.`);
+            } else {
+                if (progressStatus) {
+                    progressStatus.textContent = doneMsg;
+                }
+                ui.notifications.info(doneMsg);
+            }
+        } catch (err) {
+            console.error("[DynPog] Batch processing failed:", err);
+            if (progressStatus) {
+                progressStatus.textContent = `Error: ${err.message}`;
+            }
+            ui.notifications.error(`Batch processing failed: ${err.message}`);
+        } finally {
+            this._isProcessing = false;
+            this._checkProcessAllEnabled();
+        }
     }
 
     /**
