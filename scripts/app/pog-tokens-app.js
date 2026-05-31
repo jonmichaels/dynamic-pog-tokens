@@ -604,11 +604,7 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
                 beforeImg.src = url;
             }
             if (beforeName) {
-                const srcW = result.beforeData.width;
-                const srcH = result.beforeData.height;
-                const scaledW = Math.round(srcW * 0.668);
-                const scaledH = Math.round(srcH * 0.668);
-                beforeName.textContent = `${srcW}\u00d7${srcH} (${scaledW}\u00d7${scaledH} at 67%)`;
+                beforeName.textContent = `${result.beforeData.width}\u00d7${result.beforeData.height}`;
             }
 
             // --- After panel: checkerboard → token → ring ---
