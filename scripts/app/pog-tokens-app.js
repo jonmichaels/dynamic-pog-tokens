@@ -9,6 +9,8 @@
  * Uses HandlebarsApplicationMixin for template rendering.
  */
 
+import { processToken, loadImage } from './pog-processor.js';
+
 /** @type {string} Base path for module assets */
 const MODULE_PATH = "modules/dynamic-pog-tokens";
 
@@ -37,6 +39,22 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
             closeOnSubmit: false,
         },
     };
+
+    // Preview settings state
+    _settings = {
+        trimPx: 0,
+        maskEnabled: false,
+        maskThreshold: 128,
+        mode: 'optimized',
+        format: 'image/webp',
+        quality: 0.92,
+    };
+
+    /** @type {string|null} Current source file path */
+    _sourcePath = null;
+
+    /** @type {number|null} Debounce timer ID */
+    _debounceTimer = null;
 
     /** @override */
     static PARTS = {
@@ -77,26 +95,27 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
     #bindEvents() {
         const html = this.element;
 
-        // Select images button
-        const selectBtn = html.querySelector("#dpog-select-images");
-        if (selectBtn) {
-            selectBtn.addEventListener("click", async (ev) => {
+        // Source browse button — opens FilePicker
+        const sourceBtn = html.querySelector("#dpog-select-images");
+        if (sourceBtn) {
+            sourceBtn.addEventListener("click", (ev) => {
                 ev.preventDefault();
-                // FilePicker integration — Phase 2+
-                ui.notifications.info("Select pog-style token images to process.");
+                this._onBrowseSource();
             });
         }
 
-        // Process button
-        const processBtn = html.querySelector("#dpog-process-btn");
-        if (processBtn) {
-            processBtn.addEventListener("click", async (ev) => {
+        // Preview Single button — re-process current source
+        const previewBtn = html.querySelector("#dpog-process-btn");
+        if (previewBtn) {
+            previewBtn.addEventListener("click", async (ev) => {
                 ev.preventDefault();
-                await PogTokensApp.#onSubmit(ev, html, {});
+                if (this._sourcePath) {
+                    await this._loadAndPreview(this._sourcePath);
+                }
             });
         }
 
-        // Mask checkbox — toggle threshold slider visibility
+        // Mask checkbox — toggle threshold slider + trigger re-process
         const maskCheck = html.querySelector("#dpog-mask");
         if (maskCheck) {
             const thresholdRow = html.querySelector(".dpog-threshold-row");
@@ -104,8 +123,131 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
                 if (thresholdRow) {
                     thresholdRow.classList.toggle("dpog-hidden", !maskCheck.checked);
                 }
+                this._onSettingsChange();
             });
         }
+
+        // Trim input — debounced re-process
+        const trimInput = html.querySelector("#dpog-trim");
+        if (trimInput) {
+            trimInput.addEventListener("input", () => this._debouncedSettingsChange());
+        }
+
+        // Threshold slider — debounced re-process + update display value
+        const thresholdSlider = html.querySelector("#dpog-threshold");
+        if (thresholdSlider) {
+            thresholdSlider.addEventListener("input", () => {
+                this._debouncedSettingsChange();
+                const valueSpan = html.querySelector("#dpog-threshold-value");
+                if (valueSpan) {
+                    valueSpan.textContent = thresholdSlider.value;
+                }
+            });
+        }
+
+        // Quality radio buttons — immediate re-process
+        const qualityRadios = html.querySelectorAll("input[name='quality']");
+        qualityRadios.forEach((radio) => {
+            radio.addEventListener("change", () => this._onSettingsChange());
+        });
+
+        // Export format radio buttons — immediate re-process
+        const formatRadios = html.querySelectorAll("input[name='exportFormat']");
+        formatRadios.forEach((radio) => {
+            radio.addEventListener("change", () => this._onSettingsChange());
+        });
+    }
+
+    /**
+     * Open Foundry's FilePicker to browse for a source image.
+     */
+    _onBrowseSource() {
+        new FilePicker({
+            type: 'image',
+            callback: (filePath) => {
+                this._sourcePath = filePath;
+                this._loadAndPreview(filePath);
+            },
+        }).browse();
+    }
+
+    /**
+     * Load the source image, run the processing pipeline, and display results.
+     * @param {string} filePath - URL or path to the source image
+     */
+    async _loadAndPreview(filePath) {
+        const html = this.element;
+        const beforeImg = html.querySelector("#dpog-before-img");
+        const afterImg = html.querySelector("#dpog-after-img");
+        const afterName = html.querySelector("#dpog-after-name");
+
+        try {
+            // Show source image in the Before panel
+            if (beforeImg) {
+                beforeImg.src = filePath;
+            }
+
+            // Run processing pipeline
+            const result = await processToken(filePath, this._settings);
+
+            // Show processed result in the After panel via object URL
+            if (afterImg) {
+                // Revoke previous object URL to avoid memory leaks
+                if (afterImg._objectUrl) {
+                    URL.revokeObjectURL(afterImg._objectUrl);
+                }
+                const url = URL.createObjectURL(result.blob);
+                afterImg._objectUrl = url;
+                afterImg.src = url;
+            }
+
+            // Display size info
+            if (afterName) {
+                afterName.textContent = `${result.afterData.width}\u00d7${result.afterData.height} (${result.afterData.targetRing})`;
+            }
+        } catch (err) {
+            // Display error in the After panel
+            if (afterName) {
+                afterName.textContent = `Error: ${err.message}`;
+            }
+            if (afterImg) {
+                afterImg.src = '';
+            }
+        }
+    }
+
+    /**
+     * Read current form values, update settings, and re-process.
+     */
+    _onSettingsChange() {
+        const html = this.element;
+
+        this._settings.trimPx = parseInt(html.querySelector("#dpog-trim")?.value) || 0;
+        this._settings.maskEnabled = html.querySelector("#dpog-mask")?.checked || false;
+        this._settings.mode = html.querySelector("input[name='quality'][value='optimized']")?.checked
+            ? 'optimized'
+            : 'quick';
+        this._settings.maskThreshold = parseInt(html.querySelector("#dpog-threshold")?.value) || 128;
+        this._settings.format = html.querySelector("input[name='exportFormat'][value='webp']")?.checked
+            ? 'image/webp'
+            : 'image/png';
+
+        // Re-process if a source is already loaded
+        if (this._sourcePath) {
+            this._loadAndPreview(this._sourcePath);
+        }
+    }
+
+    /**
+     * Debounced wrapper for _onSettingsChange (used for sliders/inputs).
+     */
+    _debouncedSettingsChange() {
+        if (this._debounceTimer) {
+            clearTimeout(this._debounceTimer);
+        }
+        this._debounceTimer = setTimeout(() => {
+            this._onSettingsChange();
+        }, 300);
     }
 }
 
