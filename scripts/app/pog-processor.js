@@ -194,6 +194,92 @@ function applyCircularEdgeTrim(canvas) {
   ctx.putImageData(imageData, 0, 0);
 }
 
+/**
+ * Detect the smallest rectangle containing non-transparent image pixels.
+ * Transparent canvas padding should not affect trim, resize, or sizing math.
+ *
+ * @param {ImageBitmap} imageBitmap
+ * @returns {{x:number,y:number,width:number,height:number,cropped:boolean}}
+ */
+function detectContentBounds(imageBitmap) {
+  const width = imageBitmap.width;
+  const height = imageBitmap.height;
+  const canvas = createCanvas(width, height);
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(imageBitmap, 0, 0);
+  const imageData = ctx.getImageData(0, 0, width, height);
+
+  let minX = width;
+  let minY = height;
+  let maxX = -1;
+  let maxY = -1;
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const idx = (y * width + x) * 4;
+      if (imageData.data[idx + 3] > 0) {
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x);
+        maxY = Math.max(maxY, y);
+      }
+    }
+  }
+
+  if (maxX < minX || maxY < minY) {
+    return { x: 0, y: 0, width, height, cropped: false };
+  }
+
+  const contentWidth = maxX - minX + 1;
+  const contentHeight = maxY - minY + 1;
+  return {
+    x: minX,
+    y: minY,
+    width: contentWidth,
+    height: contentHeight,
+    cropped: minX > 0 || minY > 0 || contentWidth < width || contentHeight < height,
+  };
+}
+
+/**
+ * Remove fully transparent canvas padding before any user-selected processing.
+ *
+ * @param {ImageBitmap} imageBitmap
+ * @returns {Promise<{croppedBitmap: ImageBitmap, croppedWidth: number, croppedHeight: number, contentBounds: Object}>}
+ */
+async function cropTransparentPadding(imageBitmap) {
+  const contentBounds = detectContentBounds(imageBitmap);
+  if (!contentBounds.cropped) {
+    return {
+      croppedBitmap: imageBitmap,
+      croppedWidth: imageBitmap.width,
+      croppedHeight: imageBitmap.height,
+      contentBounds,
+    };
+  }
+
+  const canvas = createCanvas(contentBounds.width, contentBounds.height);
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(
+    imageBitmap,
+    contentBounds.x,
+    contentBounds.y,
+    contentBounds.width,
+    contentBounds.height,
+    0,
+    0,
+    contentBounds.width,
+    contentBounds.height,
+  );
+
+  return {
+    croppedBitmap: await canvasToBitmap(canvas),
+    croppedWidth: contentBounds.width,
+    croppedHeight: contentBounds.height,
+    contentBounds,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // pica singleton
 // ---------------------------------------------------------------------------
@@ -550,11 +636,20 @@ export async function processToken(src, options = {}) {
 
   const beforeData = { width: origW, height: origH };
 
-  // --- Step 2: Trim ---
+  // --- Step 2: Remove transparent canvas padding ---
   let workingBitmap = imageBitmap;
   let workingW = origW;
   let workingH = origH;
+  let contentBounds = { x: 0, y: 0, width: origW, height: origH, cropped: false };
 
+  const cropResult = await cropTransparentPadding(workingBitmap);
+  workingBitmap = cropResult.croppedBitmap;
+  workingW = cropResult.croppedWidth;
+  workingH = cropResult.croppedHeight;
+  contentBounds = cropResult.contentBounds;
+  steps.push('content-bounds');
+
+  // --- Step 3: Trim ---
   if (trimPx > 0) {
     const trimResult = await trimImage(workingBitmap, trimPx);
     workingBitmap = trimResult.trimmedBitmap;
@@ -636,6 +731,7 @@ export async function processToken(src, options = {}) {
       mode: sizing.mode,
       trimmed,
       masked,
+      contentBounds,
       steps,
     },
   };
