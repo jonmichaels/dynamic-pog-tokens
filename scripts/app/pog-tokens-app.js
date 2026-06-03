@@ -78,8 +78,11 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
     /** @type {string|null} Last source basename (for ring export filename) */
     _lastSourceBasename = null;
 
-    /** @type {Promise<{bitmap: ImageBitmap, frames: Object}>|null} Cached ring spritesheet */
+    /** @type {Promise<{bitmap: ImageBitmap, frames: Object, config: Object}>|null} Cached ring spritesheet */
     _ringCache = null;
+
+    /** @type {number} Incremented for each preview render to prevent stale async updates */
+    _previewRequestId = 0;
 
     /** @override */
     static PARTS = {
@@ -623,7 +626,7 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
 
     /**
      * Load and cache the Dynamic Ring spritesheet from Foundry.
-     * @returns {Promise<{bitmap: ImageBitmap, frames: Object}>}
+     * @returns {Promise<{bitmap: ImageBitmap, frames: Object, config: Object}>}
      */
     async _ensureRingCache() {
         if (this._ringCache) return this._ringCache;
@@ -647,12 +650,50 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
             if (!jsonResp.ok) throw new Error(`Failed to load ring data: ${jsonResp.status}`);
 
             const bitmap = await createImageBitmap(await imgResp.blob());
-            const frames = (await jsonResp.json()).frames;
-            console.log("[DynPog] Ring cached successfully, frame count:", Object.keys(frames).length);
-            return { bitmap, frames };
+            const sheet = await jsonResp.json();
+            console.log("[DynPog] Ring cached successfully, frame count:", Object.keys(sheet.frames).length);
+            return { bitmap, frames: sheet.frames, config: sheet.config || {} };
         })();
 
         return this._ringCache;
+    }
+
+    /**
+     * Colorize the raw Dynamic Token Ring foreground frame the same way Foundry's ring shader does for the default white ring.
+     * The core spritesheet stores the color band as magenta mask pixels; drawing it directly shows a pink inner ring.
+     * @param {CanvasRenderingContext2D} ctx
+     * @param {number} width
+     * @param {number} height
+     * @param {{startRadius?: number, endRadius?: number}} colorBand
+     */
+    _colorizeDefaultRingFrame(ctx, width, height, colorBand = {}) {
+        const imageData = ctx.getImageData(0, 0, width, height);
+        const data = imageData.data;
+        const centerX = (width - 1) / 2;
+        const centerY = (height - 1) / 2;
+        const radiusScale = Math.min(width, height) / 2;
+        const startRadius = colorBand.startRadius ?? 0.666;
+        const endRadius = colorBand.endRadius ?? 0.7225;
+
+        for (let y = 0; y < height; y += 1) {
+            for (let x = 0; x < width; x += 1) {
+                const idx = (y * width + x) * 4;
+                const alpha = data[idx + 3];
+                if (!alpha) continue;
+
+                const dist = Math.hypot(x - centerX, y - centerY) / radiusScale;
+                if (dist < startRadius || dist >= endRadius) continue;
+
+                // The red channel is the shader's mask strength. With Foundry's default white ring color,
+                // the band becomes neutral white/gray instead of the raw magenta mask from the spritesheet.
+                const strength = data[idx];
+                data[idx] = strength;
+                data[idx + 1] = strength;
+                data[idx + 2] = strength;
+            }
+        }
+
+        ctx.putImageData(imageData, 0, 0);
     }
 
     /**
@@ -660,6 +701,7 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
      * @param {string} filePath - URL or path to the source image
      */
     async _loadAndPreview(filePath) {
+        const requestId = ++this._previewRequestId;
         const html = this.element;
         const beforeImg = html.querySelector("#dpog-before-img");
         const beforeName = html.querySelector("#dpog-before-name");
@@ -670,6 +712,7 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
         try {
             // Run processing pipeline
             const result = await processToken(filePath, this._settings);
+            if (requestId !== this._previewRequestId) return;
             this._lastResult = result;
             this._lastSourceBasename = filePath.split('/').pop() || filePath;
 
@@ -719,6 +762,10 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
                     canvas.toBlob(b => b ? resolve(b) : reject(new Error("toBlob null")), "image/png");
                 });
                 const url = URL.createObjectURL(blob);
+                if (requestId !== this._previewRequestId) {
+                    URL.revokeObjectURL(url);
+                    return;
+                }
                 beforeImg._objectUrl = url;
                 beforeImg.src = url;
             }
@@ -742,9 +789,16 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
                 // 2. Token
                 const tokenImg = await new Promise((resolve, reject) => {
                     const i = new Image();
-                    i.onload = () => resolve(i);
-                    i.onerror = reject;
-                    i.src = URL.createObjectURL(result.blob);
+                    const url = URL.createObjectURL(result.blob);
+                    i.onload = () => {
+                        URL.revokeObjectURL(url);
+                        resolve(i);
+                    };
+                    i.onerror = (err) => {
+                        URL.revokeObjectURL(url);
+                        reject(err);
+                    };
+                    i.src = url;
                 });
                 ctx.drawImage(tokenImg, 0, 0);
 
@@ -761,7 +815,8 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
                     }
                     console.log("[DynPog] Ring frame lookup:", { canvasSize: cs, frameName: fn, hasFrame: !!(fn && cache.frames[fn]) });
                     if (!fn || !cache.frames[fn]) return null;
-                    const f = cache.frames[fn].frame;
+                    const frame = cache.frames[fn];
+                    const f = frame.frame;
                     console.log("[DynPog] Ring frame rect:", f);
                     // Draw frame onto canvas sized to match the output canvas
                     const rc = document.createElement("canvas");
@@ -777,14 +832,22 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
                     const dx = (cs - dw) / 2;
                     const dy = (cs - dh) / 2;
                     rctx.drawImage(cache.bitmap, f.x, f.y, f.w, f.h, dx, dy, dw, dh);
+                    this._colorizeDefaultRingFrame(rctx, cs, cs, frame.colorBand || cache.config.defaultColorBand);
                     // Return as Image via blob URL (more reliable than createImageBitmap)
                     return new Promise((resolve, reject) => {
                         rc.toBlob(b => {
                             if (!b) { reject(new Error("toBlob null")); return; }
                             const img = new Image();
-                            img.onload = () => resolve(img);
-                            img.onerror = reject;
-                            img.src = URL.createObjectURL(b);
+                            const url = URL.createObjectURL(b);
+                            img.onload = () => {
+                                URL.revokeObjectURL(url);
+                                resolve(img);
+                            };
+                            img.onerror = (err) => {
+                                URL.revokeObjectURL(url);
+                                reject(err);
+                            };
+                            img.src = url;
                         }, "image/png");
                     });
                 }).catch(e => { console.warn("[DynPog] Ring promise failed:", e); return null; });
@@ -794,18 +857,29 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
                     canvas.toBlob(b => b ? resolve(b) : reject(new Error("toBlob null")), "image/png");
                 });
                 const url1 = URL.createObjectURL(blob1);
+                if (requestId !== this._previewRequestId) {
+                    URL.revokeObjectURL(url1);
+                    return;
+                }
                 afterImg._objectUrl = url1;
                 afterImg.src = url1;
 
                 // Then draw ring if available
                 const ringFrame = await ringPromise;
+                if (requestId !== this._previewRequestId) {
+                    return;
+                }
                 if (ringFrame) {
                     ctx.drawImage(ringFrame, 0, 0);
                     const blob2 = await new Promise((resolve, reject) => {
                         canvas.toBlob(b => b ? resolve(b) : reject(new Error("toBlob null")), "image/png");
                     });
-                    URL.revokeObjectURL(url1);
                     const url2 = URL.createObjectURL(blob2);
+                    if (requestId !== this._previewRequestId) {
+                        URL.revokeObjectURL(url2);
+                        return;
+                    }
+                    URL.revokeObjectURL(url1);
                     afterImg._objectUrl = url2;
                     afterImg.src = url2;
                 }
@@ -822,6 +896,7 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
             }
 
         } catch (err) {
+            if (requestId !== this._previewRequestId) return;
             if (exportRingBtn) exportRingBtn.disabled = true;
             if (afterName) afterName.textContent = `Error: ${err.message}`;
             if (afterImg) afterImg.src = '';

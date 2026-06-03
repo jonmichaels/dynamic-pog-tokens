@@ -26,8 +26,20 @@ assert.match(
 
 assert.match(
   source,
-  /steps\.push\('mask'\);[\s\S]+applyCircularEdgeTrim\s*\(\s*circularTrimCanvas\s*\)/,
-  'processToken must apply circular trim after maskImage so trim-created alpha does not suppress background masking'
+  /const\s+radius\s*=\s*Math\.max\(0,\s*\(Math\.min\(width, height\) \/ 2\) - trimPx\)/,
+  'circular trim must move the circular edge inward by the applied trim amount so the ring band visibly disappears'
+);
+
+assert.match(
+  source,
+  /appliedTrimPx:\s*safeTrim/,
+  'trimImage must report the clamped trim amount used for the circular edge trim'
+);
+
+assert.match(
+  source,
+  /applyCircularEdgeTrim\s*\(\s*circularTrimCanvas\s*,\s*appliedTrimPx\s*\)/,
+  'processToken must pass the applied trim amount into the circular edge-trim mask'
 );
 
 console.log('static-circular-trim: ok');

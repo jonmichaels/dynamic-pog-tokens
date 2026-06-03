@@ -171,7 +171,7 @@ function floodFillCorners(imageData, width, height, bgColor, threshold) {
  *
  * @param {HTMLCanvasElement|OffscreenCanvas} canvas  Cropped token canvas
  */
-function applyCircularEdgeTrim(canvas) {
+function applyCircularEdgeTrim(canvas, trimPx = 0) {
   const width = canvas.width;
   const height = canvas.height;
   const ctx = canvas.getContext('2d');
@@ -179,7 +179,7 @@ function applyCircularEdgeTrim(canvas) {
 
   const centerX = (width - 1) / 2;
   const centerY = (height - 1) / 2;
-  const radius = Math.min(width, height) / 2;
+  const radius = Math.max(0, (Math.min(width, height) / 2) - trimPx);
 
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
@@ -365,7 +365,7 @@ export async function loadImage(src) {
  */
 export async function trimImage(imageBitmap, trimPx) {
   if (trimPx <= 0) {
-    return { trimmedBitmap: imageBitmap, trimmedWidth: imageBitmap.width, trimmedHeight: imageBitmap.height };
+    return { trimmedBitmap: imageBitmap, trimmedWidth: imageBitmap.width, trimmedHeight: imageBitmap.height, appliedTrimPx: 0 };
   }
 
   const srcW = imageBitmap.width;
@@ -373,7 +373,7 @@ export async function trimImage(imageBitmap, trimPx) {
 
   const safeTrim = Math.min(trimPx, Math.floor((srcW - 2) / 2), Math.floor((srcH - 2) / 2));
   if (safeTrim <= 0) {
-    return { trimmedBitmap: imageBitmap, trimmedWidth: srcW, trimmedHeight: srcH };
+    return { trimmedBitmap: imageBitmap, trimmedWidth: srcW, trimmedHeight: srcH, appliedTrimPx: 0 };
   }
 
   const newW = srcW - 2 * safeTrim;
@@ -384,7 +384,7 @@ export async function trimImage(imageBitmap, trimPx) {
   ctx.drawImage(imageBitmap, safeTrim, safeTrim, newW, newH, 0, 0, newW, newH);
 
   const trimmedBitmap = await canvasToBitmap(canvas);
-  return { trimmedBitmap, trimmedWidth: newW, trimmedHeight: newH };
+  return { trimmedBitmap, trimmedWidth: newW, trimmedHeight: newH, appliedTrimPx: safeTrim };
 }
 
 // ---------------------------------------------------------------------------
@@ -628,6 +628,7 @@ export async function processToken(src, options = {}) {
 
   const steps = [];
   let trimmed = false;
+  let appliedTrimPx = 0;
   let masked = false;
 
   // --- Step 1: Load ---
@@ -655,7 +656,8 @@ export async function processToken(src, options = {}) {
     workingBitmap = trimResult.trimmedBitmap;
     workingW = trimResult.trimmedWidth;
     workingH = trimResult.trimmedHeight;
-    trimmed = true;
+    appliedTrimPx = trimResult.appliedTrimPx;
+    trimmed = appliedTrimPx > 0;
   }
   steps.push('trim');
 
@@ -674,7 +676,7 @@ export async function processToken(src, options = {}) {
     const circularTrimCanvas = createCanvas(workingW, workingH);
     const circularTrimCtx = circularTrimCanvas.getContext('2d');
     circularTrimCtx.drawImage(workingBitmap, 0, 0);
-    applyCircularEdgeTrim(circularTrimCanvas);
+    applyCircularEdgeTrim(circularTrimCanvas, appliedTrimPx);
     workingBitmap = await canvasToBitmap(circularTrimCanvas);
   }
   steps.push('circular-trim');
