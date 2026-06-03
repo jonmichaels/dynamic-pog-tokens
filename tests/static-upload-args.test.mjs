@@ -7,7 +7,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const source = readFileSync(join(__dirname, '..', 'scripts', 'app', 'pog-tokens-app.js'), 'utf8');
 
 const uploadCalls = [...source.matchAll(/await\s+FilePicker\.upload\(([^;]+?)\);/gs)].map(match => match[1]);
-assert.equal(uploadCalls.length, 2, 'expected exactly two executable FilePicker.upload calls');
+assert.equal(uploadCalls.length, 1, 'expected exactly one executable FilePicker.upload call');
 
 for (const call of uploadCalls) {
   assert.match(

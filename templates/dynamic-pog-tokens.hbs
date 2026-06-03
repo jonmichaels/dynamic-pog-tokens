@@ -18,47 +18,64 @@
                 <img id="dpog-after-img" src="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 1 1%22/>" alt="{{localize 'DynPog.AfterAlt'}}" />
             </div>
             <span class="dpog-image-name" id="dpog-after-name">{{localize "DynPog.NoImage"}}</span>
-            <button type="button" id="dpog-export-ring" class="dpog-export-ring-btn" disabled>
-                <i class="fa-solid fa-circle"></i> {{localize "DynPog.ExportRing"}}
-            </button>
         </div>
     </div>
 
-    <!-- Controls panel: quality, trim, mask, ring size, export format -->
+    <!-- Controls panel -->
     <div class="dpog-controls">
+        <!-- Source selector -->
+        <div class="dpog-control-row dpog-wide-row">
+            <label class="dpog-control-label">{{localize "DynPog.Source"}}</label>
+            <button type="button" id="dpog-select-images" class="dpog-select-btn">
+                <i class="fa-solid fa-folder-open"></i> {{localize "DynPog.SelectFolder"}}
+            </button>
+            <span class="dpog-path-display" id="dpog-source-path"></span>
+        </div>
+
+        <!-- Destination folder -->
+        <div class="dpog-control-row dpog-wide-row">
+            <label class="dpog-control-label">{{localize "DynPog.Destination"}}</label>
+            <button type="button" id="dpog-browse-dest" class="dpog-select-btn">
+                <i class="fa-solid fa-folder"></i> {{localize "DynPog.Browse"}}
+            </button>
+            <span class="dpog-path-display" id="dpog-dest-path"></span>
+        </div>
+
         <!-- Quality radio: Quick vs Optimized -->
         <div class="dpog-control-row">
             <label class="dpog-control-label">{{localize "DynPog.Quality"}}</label>
             <div class="dpog-radio-group">
                 <label class="dpog-radio-label">
-                    <input type="radio" name="quality" value="quick" checked />
+                    <input type="radio" name="quality" value="quick" />
                     <span>{{localize "DynPog.Quick"}}</span>
                 </label>
                 <label class="dpog-radio-label">
-                    <input type="radio" name="quality" value="optimized" />
+                    <input type="radio" name="quality" value="optimized" checked />
                     <span>{{localize "DynPog.Optimized"}}</span>
                 </label>
             </div>
         </div>
 
-        <!-- Trim control -->
-        <div class="dpog-control-row">
-            <label class="dpog-control-label" for="dpog-trim">{{localize "DynPog.Trim"}}</label>
-            <input type="number" id="dpog-trim" name="trim" value="0" min="0" max="100" step="1" class="dpog-number-input" />
-            <span class="dpog-unit">{{localize "DynPog.Pixels"}}</span>
+        <div class="dpog-control-grid">
+            <!-- Trim control -->
+            <div class="dpog-control-row dpog-control-field">
+                <label class="dpog-control-label" for="dpog-trim">{{localize "DynPog.Trim"}}</label>
+                <input type="number" id="dpog-trim" name="trim" value="0" min="0" max="100" step="1" class="dpog-number-input" />
+                <span class="dpog-unit">{{localize "DynPog.Pixels"}}</span>
+            </div>
+
+            <!-- Mask checkbox -->
+            <div class="dpog-control-row dpog-control-field">
+                <label class="dpog-control-label">{{localize "DynPog.Mask"}}</label>
+                <label class="dpog-checkbox-label">
+                    <input type="checkbox" id="dpog-mask" name="mask" />
+                    <span>{{localize "DynPog.EnableMask"}}</span>
+                </label>
+            </div>
         </div>
 
-        <!-- Mask checkbox -->
-        <div class="dpog-control-row">
-            <label class="dpog-control-label">{{localize "DynPog.Mask"}}</label>
-            <label class="dpog-checkbox-label">
-                <input type="checkbox" id="dpog-mask" name="mask" />
-                <span>{{localize "DynPog.EnableMask"}}</span>
-            </label>
-        </div>
-
-        <!-- Mask threshold slider (hidden when mask is unchecked) -->
-        <div class="dpog-control-row dpog-threshold-row dpog-hidden">
+        <!-- Mask threshold is required by mask processing, but intentionally hidden from the UI. -->
+        <div class="dpog-control-row dpog-threshold-row dpog-hidden" aria-hidden="true">
             <label class="dpog-control-label" for="dpog-threshold">{{localize "DynPog.Threshold"}}</label>
             <input type="range" id="dpog-threshold" name="threshold" value="128" min="0" max="255" step="1" class="dpog-range-input" />
             <span class="dpog-range-value" id="dpog-threshold-value">128</span>
@@ -77,34 +94,44 @@
             </select>
         </div>
 
-        <!-- Export format radio -->
-        <div class="dpog-control-row">
-            <label class="dpog-control-label">{{localize "DynPog.ExportFormat"}}</label>
-            <div class="dpog-radio-group">
-                <label class="dpog-radio-label">
-                    <input type="radio" name="exportFormat" value="webp" checked />
-                    <span>{{localize "DynPog.Webp"}}</span>
-                </label>
-                <label class="dpog-radio-label">
-                    <input type="radio" name="exportFormat" value="png" />
-                    <span>{{localize "DynPog.Png"}}</span>
-                </label>
+        <div class="dpog-control-grid">
+            <!-- Output filename prefix -->
+            <div class="dpog-control-row dpog-control-field">
+                <label class="dpog-control-label" for="dpog-prefix">{{localize "DynPog.Prefix"}}</label>
+                <input type="text" id="dpog-prefix" name="prefix" value="dynamic_ring_" class="dpog-text-input" />
+            </div>
+
+            <!-- Output filename suffix -->
+            <div class="dpog-control-row dpog-control-field">
+                <label class="dpog-control-label" for="dpog-suffix">{{localize "DynPog.Suffix"}}</label>
+                <input type="text" id="dpog-suffix" name="suffix" value="" class="dpog-text-input" />
             </div>
         </div>
 
-        <!-- Output filename prefix -->
-        <div class="dpog-control-row">
-            <label class="dpog-control-label" for="dpog-prefix">{{localize "DynPog.Prefix"}}</label>
-            <input type="text" id="dpog-prefix" name="prefix" value="dynamic_ring_" class="dpog-text-input" />
-        </div>
+        <div class="dpog-control-grid">
+            <!-- Export format radio -->
+            <div class="dpog-control-row dpog-control-field">
+                <label class="dpog-control-label">{{localize "DynPog.ExportFormat"}}</label>
+                <div class="dpog-radio-group">
+                    <label class="dpog-radio-label">
+                        <input type="radio" name="exportFormat" value="webp" checked />
+                        <span>{{localize "DynPog.Webp"}}</span>
+                    </label>
+                    <label class="dpog-radio-label">
+                        <input type="radio" name="exportFormat" value="png" />
+                        <span>{{localize "DynPog.Png"}}</span>
+                    </label>
+                </div>
+            </div>
 
-        <!-- Destination folder -->
-        <div class="dpog-control-row">
-            <label class="dpog-control-label">{{localize "DynPog.Destination"}}</label>
-            <button type="button" id="dpog-browse-dest" class="dpog-select-btn">
-                <i class="fa-solid fa-folder"></i> {{localize "DynPog.Browse"}}
-            </button>
-            <span class="dpog-dest-path" id="dpog-dest-path"></span>
+            <!-- Export ring checkbox -->
+            <div class="dpog-control-row dpog-control-field">
+                <label class="dpog-control-label">{{localize "DynPog.ExportRing"}}</label>
+                <label class="dpog-checkbox-label">
+                    <input type="checkbox" id="dpog-include-ring" name="includeRing" />
+                    <span>{{localize "DynPog.IncludeRing"}}</span>
+                </label>
+            </div>
         </div>
     </div>
 
@@ -117,17 +144,10 @@
         <span class="dpog-progress-status" id="dpog-progress-status">{{localize "DynPog.Ready"}}</span>
     </div>
 
-    <!-- Action buttons -->
+    <!-- Action button -->
     <div class="dpog-action-section">
-        <button type="button" id="dpog-select-images" class="dpog-select-btn">
-            <i class="fa-solid fa-folder-open"></i> {{localize "DynPog.SelectFolder"}}
-        </button>
-        <span class="dpog-dest-path" id="dpog-source-path"></span>
-        <button type="submit" id="dpog-process-btn" class="dpog-process-btn">
-            <i class="fa-solid fa-gears"></i> {{localize "DynPog.Process"}}
-        </button>
         <button type="button" id="dpog-process-all" class="dpog-process-all-btn" disabled>
-            <i class="fa-solid fa-play"></i> {{localize "DynPog.ProcessAll"}}
+            <i class="fa-solid fa-play"></i> {{localize "DynPog.Process"}}
         </button>
     </div>
 </div>

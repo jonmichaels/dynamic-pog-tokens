@@ -9,7 +9,7 @@
  * Uses HandlebarsApplicationMixin for template rendering.
  */
 
-import { processToken, loadImage } from './pog-processor.js';
+import { processToken } from './pog-processor.js';
 
 /** @type {string} Base path for module assets */
 const MODULE_PATH = "modules/dynamic-pog-tokens";
@@ -52,6 +52,8 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
         format: 'image/webp',
         quality: 0.92,
         ringOverride: 'auto',
+        suffix: '',
+        includeRing: false,
     };
 
     /** @type {string|null} Current source folder path */
@@ -175,10 +177,6 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
         const maskCheck = html.querySelector("#dpog-mask");
         if (maskCheck) {
             maskCheck.checked = this._settings.maskEnabled;
-            const thresholdRow = html.querySelector(".dpog-threshold-row");
-            if (thresholdRow) {
-                thresholdRow.classList.toggle("dpog-hidden", !this._settings.maskEnabled);
-            }
         }
 
         // Threshold
@@ -200,6 +198,14 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
         // Ring override
         const ringSelect = html.querySelector("#dpog-ring-select");
         if (ringSelect) ringSelect.value = this._settings.ringOverride || 'auto';
+
+        // Filename suffix
+        const suffixInput = html.querySelector("#dpog-suffix");
+        if (suffixInput) suffixInput.value = this._settings.suffix || '';
+
+        // Export ring checkbox
+        const includeRingCheck = html.querySelector("#dpog-include-ring");
+        if (includeRingCheck) includeRingCheck.checked = !!this._settings.includeRing;
     }
 
     /**
@@ -217,25 +223,19 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
             });
         }
 
-        // Preview Single button — re-process current source
-        const previewBtn = html.querySelector("#dpog-process-btn");
-        if (previewBtn) {
-            previewBtn.addEventListener("click", async (ev) => {
+        // Process button
+        const processAllBtn = html.querySelector("#dpog-process-all");
+        if (processAllBtn) {
+            processAllBtn.addEventListener("click", async (ev) => {
                 ev.preventDefault();
-                if (this._previewPath) {
-                    await this._loadAndPreview(this._previewPath);
-                }
+                await this._processAll();
             });
         }
 
-        // Mask checkbox — toggle threshold slider + trigger re-process
+        // Mask checkbox — trigger re-process; threshold remains hidden but preserved internally.
         const maskCheck = html.querySelector("#dpog-mask");
         if (maskCheck) {
-            const thresholdRow = html.querySelector(".dpog-threshold-row");
             maskCheck.addEventListener("change", () => {
-                if (thresholdRow) {
-                    thresholdRow.classList.toggle("dpog-hidden", !maskCheck.checked);
-                }
                 this._onSettingsChange();
             });
         }
@@ -276,6 +276,18 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
             ringSelect.addEventListener("change", () => this._onSettingsChange());
         }
 
+        // Filename suffix — persist with settings without re-rendering preview.
+        const suffixInput = html.querySelector("#dpog-suffix");
+        if (suffixInput) {
+            suffixInput.addEventListener("input", () => this._updateOutputSettingsOnly());
+        }
+
+        // Export ring checkbox — persist with settings without re-rendering preview.
+        const includeRingCheck = html.querySelector("#dpog-include-ring");
+        if (includeRingCheck) {
+            includeRingCheck.addEventListener("change", () => this._updateOutputSettingsOnly());
+        }
+
         // Destination folder browse button
         const destBtn = html.querySelector("#dpog-browse-dest");
         if (destBtn) {
@@ -285,23 +297,6 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
             });
         }
 
-        // Export With Ring button
-        const exportRingBtn = html.querySelector("#dpog-export-ring");
-        if (exportRingBtn) {
-            exportRingBtn.addEventListener("click", async (ev) => {
-                ev.preventDefault();
-                await this._exportWithRing();
-            });
-        }
-
-        // Process All button
-        const processAllBtn = html.querySelector("#dpog-process-all");
-        if (processAllBtn) {
-            processAllBtn.addEventListener("click", async (ev) => {
-                ev.preventDefault();
-                await this._processAll();
-            });
-        }
     }
 
     /**
@@ -496,9 +491,11 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
             // Read settings before processing starts
             this._onSettingsChange();
 
-            // Get prefix from input
+            // Get prefix/suffix from inputs
             const prefixInput = html.querySelector("#dpog-prefix");
             const prefix = prefixInput ? (prefixInput.value || "dynamic_ring_") : "dynamic_ring_";
+            const suffixInput = html.querySelector("#dpog-suffix");
+            const suffix = suffixInput ? (suffixInput.value || "") : "";
 
             // Determine file extension from format setting
             const ext = this._settings.format === 'image/png' ? '.png' : '.webp';
@@ -554,12 +551,17 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
                     // Process the token
                     const result = await processToken(fileUrl, this._settings);
 
-                    // Build output filename: prefix + original basename (strip original ext, add new)
+                    let resultBlob = result.blob;
+                    if (this._settings.includeRing) {
+                        resultBlob = await this._composeBlobWithRing(result);
+                    }
+
+                    // Build output filename: prefix + original basename + suffix (strip original ext, add new)
                     const nameWithoutExt = basename.replace(/\.[^.]+$/, '');
-                    const outputName = prefix + nameWithoutExt + ext;
+                    const outputName = prefix + nameWithoutExt + suffix + ext;
 
                     // Create File object for upload
-                    const file = new File([result.blob], outputName, { type: this._settings.format });
+                    const file = new File([resultBlob], outputName, { type: this._settings.format });
 
                     // Upload to destination folder.
                     // Foundry v13 signature: FilePicker.upload(source, path, file, body, options)
@@ -707,7 +709,6 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
         const beforeName = html.querySelector("#dpog-before-name");
         const afterImg = html.querySelector("#dpog-after-img");
         const afterName = html.querySelector("#dpog-after-name");
-        const exportRingBtn = html.querySelector("#dpog-export-ring");
 
         try {
             // Run processing pipeline
@@ -890,14 +891,8 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
                 afterName.textContent = `${ad.canvasSize}\u00d7${ad.canvasSize} (${ad.width}\u00d7${ad.height} ${mode})`;
             }
 
-            // Enable export ring button
-            if (exportRingBtn) {
-                exportRingBtn.disabled = false;
-            }
-
         } catch (err) {
             if (requestId !== this._previewRequestId) return;
-            if (exportRingBtn) exportRingBtn.disabled = true;
             if (afterName) afterName.textContent = `Error: ${err.message}`;
             if (afterImg) afterImg.src = '';
             console.error("[DynPog] Preview error:", err);
@@ -905,83 +900,60 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
     }
 
     /**
-     * Export the current preview with the ring drawn as a solid circle overlay.
+     * Compose the processed token blob with the active Foundry Dynamic Token Ring frame.
+     * @param {Object} result processToken result
+     * @returns {Promise<Blob>}
      */
-    async _exportWithRing() {
-        if (!this._lastResult || !this._destPath) {
-            ui.notifications.warn(game.i18n.localize("DynPog.NoImage"));
-            return;
-        }
+    async _composeBlobWithRing(result) {
+        const canvasSize = result.afterData.canvasSize;
+        const canvas = document.createElement('canvas');
+        canvas.width = canvasSize;
+        canvas.height = canvasSize;
+        const ctx = canvas.getContext('2d');
 
+        const tokenUrl = URL.createObjectURL(result.blob);
         try {
-            // Re-process to get the final canvas with ring drawn
-            // We re-run processToken to get access to the final canvas
-            const result = await processToken(this._previewPath, this._settings);
-
-            // We need the finalCanvas. Since processToken returns a blob,
-            // we need to draw the ring on a separate copy.
-            // Load the original source image
-            const { imageBitmap } = await loadImage(this._previewPath);
-
-            // Figure out the after dimensions
-            const afterData = result.afterData;
-            const canvasSize = afterData.canvasSize;
-            const ringDiameter = afterData.ringDiameter;
-
-            // Create a canvas, draw the processed result, then overlay the ring
-            const canvas = document.createElement('canvas');
-            canvas.width = canvasSize;
-            canvas.height = canvasSize;
-            const ctx = canvas.getContext('2d');
-
-            // Draw the processed blob onto the canvas
-            const blobUrl = URL.createObjectURL(result.blob);
-            const img = new Image();
-            await new Promise((resolve, reject) => {
-                img.onload = resolve;
+            const tokenImg = await new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
                 img.onerror = reject;
-                img.src = blobUrl;
+                img.src = tokenUrl;
             });
-            ctx.drawImage(img, 0, 0);
-            URL.revokeObjectURL(blobUrl);
-
-            // Draw the ring as a solid circle
-            const centerX = canvasSize / 2;
-            const centerY = canvasSize / 2;
-            const radius = ringDiameter / 2;
-
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
-            ctx.lineWidth = Math.max(2, Math.round(ringDiameter * 0.01));
-            ctx.stroke();
-
-            // Export
-            const blob = await new Promise((resolve, reject) => {
-                canvas.toBlob(
-                    (b) => {
-                        if (b) resolve(b);
-                        else reject(new Error('Canvas toBlob returned null'));
-                    },
-                    this._settings.format,
-                    this._settings.quality,
-                );
-            });
-
-            // Build filename
-            const nameWithoutExt = (this._lastSourceBasename || 'token').replace(/\.[^.]+$/, '');
-            const ext = this._settings.format === 'image/png' ? '.png' : '.webp';
-            const outputName = 'ring_preview_' + nameWithoutExt + ext;
-
-            // Upload. Foundry v13 signature: FilePicker.upload(source, path, file, body, options)
-            const file = new File([blob], outputName, { type: this._settings.format });
-            await FilePicker.upload("data", this._destPath, file, {});
-
-            ui.notifications.info(`Ring preview exported: ${outputName}`);
-        } catch (err) {
-            console.error('[DynPog] Export with ring failed:', err);
-            ui.notifications.error(`Export with ring failed: ${err.message}`);
+            ctx.drawImage(tokenImg, 0, 0);
+        } finally {
+            URL.revokeObjectURL(tokenUrl);
         }
+
+        const cache = await this._ensureRingCache();
+        const sizes = [2048, 1024, 512, 256];
+        let frameName = null;
+        for (const size of sizes) {
+            if (canvasSize >= size) {
+                const frameMap = { 2048: "token-ring-gargantuan", 1024: "token-ring-large-huge", 512: "token-ring-med", 256: "token-ring-tiny" };
+                frameName = frameMap[size];
+                break;
+            }
+        }
+
+        const frame = frameName ? cache.frames[frameName] : null;
+        if (!frame) return result.blob;
+
+        const f = frame.frame;
+        const scale = Math.min(canvasSize / f.w, canvasSize / f.h);
+        const dw = f.w * scale;
+        const dh = f.h * scale;
+        const dx = (canvasSize - dw) / 2;
+        const dy = (canvasSize - dh) / 2;
+        ctx.drawImage(cache.bitmap, f.x, f.y, f.w, f.h, dx, dy, dw, dh);
+        this._colorizeDefaultRingFrame(ctx, canvasSize, canvasSize, frame.colorBand || cache.config.defaultColorBand);
+
+        return new Promise((resolve, reject) => {
+            canvas.toBlob(
+                (blob) => blob ? resolve(blob) : reject(new Error('Canvas toBlob returned null')),
+                this._settings.format,
+                this._settings.quality,
+            );
+        });
     }
 
     /**
@@ -1000,11 +972,22 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
             ? 'image/webp'
             : 'image/png';
         this._settings.ringOverride = html.querySelector("#dpog-ring-select")?.value || 'auto';
+        this._settings.suffix = html.querySelector("#dpog-suffix")?.value || '';
+        this._settings.includeRing = html.querySelector("#dpog-include-ring")?.checked || false;
 
         // Re-process if a preview image is already loaded
         if (this._previewPath) {
             this._loadAndPreview(this._previewPath);
         }
+    }
+
+    /**
+     * Update output-only settings that do not affect the live preview.
+     */
+    _updateOutputSettingsOnly() {
+        const html = this.element;
+        this._settings.suffix = html.querySelector("#dpog-suffix")?.value || '';
+        this._settings.includeRing = html.querySelector("#dpog-include-ring")?.checked || false;
     }
 
     /**
