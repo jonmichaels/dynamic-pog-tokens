@@ -135,10 +135,11 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
             if (saved && saved !== '{}') {
                 const parsed = JSON.parse(saved);
                 this._settings = { ...this._settings, ...parsed };
-                this._applySettingsToUI();
             }
         } catch (e) {
             console.warn('[DynPog] Failed to restore settings:', e);
+        } finally {
+            this._applySettingsToUI();
         }
     }
 
@@ -448,8 +449,9 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
                     // Create File object for upload
                     const file = new File([result.blob], outputName, { type: this._settings.format });
 
-                    // Upload to destination folder
-                    await FilePicker.upload(this._destPath, null, file, {});
+                    // Upload to destination folder.
+                    // Foundry v13 signature: FilePicker.upload(source, path, file, body, options)
+                    await FilePicker.upload("data", this._destPath, file, {});
 
                     processed++;
                 } catch (err) {
@@ -779,9 +781,9 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
             const ext = this._settings.format === 'image/png' ? '.png' : '.webp';
             const outputName = 'ring_preview_' + nameWithoutExt + ext;
 
-            // Upload
+            // Upload. Foundry v13 signature: FilePicker.upload(source, path, file, body, options)
             const file = new File([blob], outputName, { type: this._settings.format });
-            await FilePicker.upload(this._destPath, null, file, {});
+            await FilePicker.upload("data", this._destPath, file, {});
 
             ui.notifications.info(`Ring preview exported: ${outputName}`);
         } catch (err) {

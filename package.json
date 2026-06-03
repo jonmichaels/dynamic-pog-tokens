@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "scripts": {
     "build": "npx webpack --config webpack.config.js --mode production",
-    "watch": "npx webpack --config webpack.config.js --mode development --watch"
+    "watch": "npx webpack --config webpack.config.js --mode development --watch",
+    "test": "node tests/static-upload-args.test.mjs && node tests/static-restore-defaults.test.mjs"
   },
   "devDependencies": {
     "css-loader": "^7.1.2",
