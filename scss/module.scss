@@ -102,6 +102,10 @@
     min-width: 0;
 }
 
+.dpog-ring-row {
+    width: calc((100% - 16px) / 2);
+}
+
 .dpog-path-display {
     flex: 1;
     min-width: 0;
@@ -175,8 +179,9 @@
 }
 
 .dpog-select {
+    flex: 1;
     height: 26px;
-    min-width: 120px;
+    min-width: 0;
 }
 
 /* ── Progress bar ── */
@@ -229,7 +234,7 @@
 }
 
 .dpog-select-btn {
-    padding: 8px 16px;
+    padding: 6px 8px;
     font-size: 13px;
     background: var(--color-bg-secondary, #222);
     color: var(--color-text, #ddd);
@@ -244,6 +249,11 @@
         background: var(--color-bg-hover, #2a2a2a);
         border-color: var(--color-border-highlight, #888);
     }
+}
+
+.dpog-source-dest-btn {
+    flex: 0 0 112px;
+    justify-content: center;
 }
 
 .dpog-process-all-btn {

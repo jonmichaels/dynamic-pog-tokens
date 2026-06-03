@@ -26,7 +26,7 @@
         <!-- Source selector -->
         <div class="dpog-control-row dpog-wide-row">
             <label class="dpog-control-label">{{localize "DynPog.Source"}}</label>
-            <button type="button" id="dpog-select-images" class="dpog-select-btn">
+            <button type="button" id="dpog-select-images" class="dpog-select-btn dpog-source-dest-btn">
                 <i class="fa-solid fa-folder-open"></i> {{localize "DynPog.SelectFolder"}}
             </button>
             <span class="dpog-path-display" id="dpog-source-path"></span>
@@ -35,7 +35,7 @@
         <!-- Destination folder -->
         <div class="dpog-control-row dpog-wide-row">
             <label class="dpog-control-label">{{localize "DynPog.Destination"}}</label>
-            <button type="button" id="dpog-browse-dest" class="dpog-select-btn">
+            <button type="button" id="dpog-browse-dest" class="dpog-select-btn dpog-source-dest-btn">
                 <i class="fa-solid fa-folder"></i> {{localize "DynPog.Browse"}}
             </button>
             <span class="dpog-path-display" id="dpog-dest-path"></span>
@@ -82,7 +82,7 @@
         </div>
 
         <!-- Ring size select -->
-        <div class="dpog-control-row">
+        <div class="dpog-control-row dpog-control-field dpog-ring-row">
             <label class="dpog-control-label" for="dpog-ring-select">{{localize "DynPog.RingSize"}}</label>
             <select id="dpog-ring-select" name="ringSize" class="dpog-select">
                 <option value="auto" selected>{{localize "DynPog.RingAuto"}}</option>

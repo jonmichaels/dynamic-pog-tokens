@@ -20,6 +20,9 @@ assert.match(template, /id="dpog-suffix"/, 'Suffix input must be present');
 assert.match(template, /name="suffix"/, 'Suffix input must submit/store with suffix name');
 assert.match(template, /name="includeRing"/, 'Export Ring checkbox must be present');
 assert.match(template, /{{localize "DynPog\.IncludeRing"}}/, 'Export Ring checkbox label must use Include Ring i18n key');
+assert.match(template, /id="dpog-select-images" class="dpog-select-btn dpog-source-dest-btn"/, 'Source picker button must use compact matched-width button class');
+assert.match(template, /id="dpog-browse-dest" class="dpog-select-btn dpog-source-dest-btn"/, 'Destination picker button must match source button width');
+assert.match(template, /dpog-ring-row/, 'Ring Size row must be constrained to match Prefix input column width');
 
 assert.match(template, /id="dpog-threshold"/, 'Threshold value must remain in DOM for required mask processing data');
 assert.match(template, /dpog-threshold-row[^\n"]*dpog-hidden|dpog-hidden[^\n"]*dpog-threshold-row/, 'Threshold row must stay hidden from the UI');
@@ -34,5 +37,7 @@ assert.equal(i18n.DynPog.Suffix, 'Suffix', 'Suffix label must exist');
 assert.equal(i18n.DynPog.ExportRing, 'Export Ring', 'Export Ring group label must exist');
 assert.equal(i18n.DynPog.IncludeRing, 'Include Ring', 'Include Ring checkbox label must exist');
 assert.equal(i18n.DynPog.Process, 'Process', 'Single bottom process button label must be Process');
+assert.equal(i18n.DynPog.SelectFolder, 'Image / Folder', 'Source picker button label must be Image / Folder');
+assert.equal(i18n.DynPog.Browse, 'Folder', 'Destination picker button label must be Folder');
 
 console.log('static-wireframe-contract: ok');
