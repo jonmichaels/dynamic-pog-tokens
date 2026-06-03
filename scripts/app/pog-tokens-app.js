@@ -57,6 +57,9 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
     /** @type {string|null} Current source folder path */
     _sourceDir = null;
 
+    /** @type {string[]|null} Explicit source image list; null means process the whole source folder */
+    _sourceFiles = null;
+
     /** @type {string|null} Current preview image path */
     _previewPath = null;
 
@@ -299,35 +302,146 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
     }
 
     /**
-     * Open Foundry's FilePicker to browse for a source folder.
-     * Auto-selects the first image in the folder for preview.
+     * Open Foundry's FilePicker to browse for a source image or source folder.
+     * The native image picker shows image files; a module-added action selects the current folder.
      */
     async _onBrowseSource() {
-        new FilePicker({
-            type: 'folder',
-            callback: async (folderPath) => {
-                this._sourceDir = folderPath.endsWith('/') ? folderPath : folderPath + '/';
-                // Display the folder path
-                const srcDisplay = this.element.querySelector("#dpog-source-path");
-                if (srcDisplay) srcDisplay.textContent = this._sourceDir;
-
-                // Browse folder for first image to preview
-                try {
-                    const result = await FilePicker.browse("data", this._sourceDir);
-                    const exts = ['.png', '.webp', '.jpg', '.jpeg'];
-                    const firstImage = result.files.find(f =>
-                        exts.some(e => f.toLowerCase().endsWith(e))
-                    );
-                    if (firstImage) {
-                        this._previewPath = firstImage;
-                        this._loadAndPreview(firstImage);
-                    }
-                } catch (e) {
-                    console.warn('[DynPog] Could not browse folder for preview:', e);
-                }
-                this._checkProcessAllEnabled();
+        const picker = new FilePicker({
+            type: 'image',
+            current: this._previewPath || this._sourceDir || '',
+            callback: async (selectedPath) => {
+                await this._setSourceFromImage(selectedPath);
             },
-        }).browse();
+        });
+
+        const addFolderButton = (app) => {
+            if (app === picker) this.#addUseCurrentFolderButton(picker);
+        };
+        Hooks.on("renderFilePicker", addFolderButton);
+
+        const closePicker = picker.close.bind(picker);
+        picker.close = async (...args) => {
+            Hooks.off("renderFilePicker", addFolderButton);
+            return closePicker(...args);
+        };
+
+        await picker.browse();
+        this.#addUseCurrentFolderButton(picker);
+        setTimeout(() => this.#addUseCurrentFolderButton(picker), 50);
+    }
+
+    /**
+     * Add a "Use Current Folder" button to Foundry's image picker so one dialog can select either a file or a folder.
+     * @param {FilePicker} picker
+     */
+    #addUseCurrentFolderButton(picker) {
+        const root = picker.element;
+        if (!root || root.querySelector(".dpog-use-current-folder")) return;
+
+        const selectButton = root.querySelector("button[type='submit']");
+        const container = selectButton?.parentElement || root.querySelector("footer") || root.querySelector(".window-content");
+        if (!container) return;
+
+        const folderButton = document.createElement("button");
+        folderButton.type = "button";
+        folderButton.classList.add("dpog-use-current-folder");
+        folderButton.innerHTML = `<i class="fa-solid fa-folder-check"></i> ${game.i18n.localize("DynPog.UseCurrentFolder")}`;
+        folderButton.addEventListener("click", async (ev) => {
+            ev.preventDefault();
+            const folderPath = picker.source?.target || picker.target || picker.result?.target || '';
+            await this._setSourceFromFolder(folderPath);
+            picker.close();
+        });
+
+        if (selectButton) selectButton.before(folderButton);
+        else container.appendChild(folderButton);
+    }
+
+    /**
+     * Select a single image as the source.
+     * @param {string} filePath
+     */
+    async _setSourceFromImage(filePath) {
+        if (!this.#isImagePath(filePath)) {
+            ui.notifications.warn(game.i18n.localize("DynPog.NoImage"));
+            return;
+        }
+
+        this._previewPath = filePath;
+        this._sourceDir = this.#getFolderPath(filePath);
+        this._sourceFiles = [filePath];
+
+        const srcDisplay = this.element.querySelector("#dpog-source-path");
+        if (srcDisplay) srcDisplay.textContent = game.i18n.format("DynPog.SourceImage", { path: filePath });
+
+        await this._loadAndPreview(filePath);
+        this._checkProcessAllEnabled();
+    }
+
+    /**
+     * Select a folder as the source and preview its first image.
+     * @param {string} folderPath
+     */
+    async _setSourceFromFolder(folderPath) {
+        this._sourceDir = this.#normalizeFolderPath(folderPath);
+        this._sourceFiles = null;
+
+        const srcDisplay = this.element.querySelector("#dpog-source-path");
+        if (srcDisplay) srcDisplay.textContent = game.i18n.format("DynPog.SourceFolder", { path: this._sourceDir });
+
+        try {
+            const imageFiles = await this.#getImageFilesFromFolder(this._sourceDir);
+            if (imageFiles.length > 0) {
+                this._previewPath = imageFiles[0];
+                await this._loadAndPreview(imageFiles[0]);
+            } else {
+                this._previewPath = null;
+                ui.notifications.warn(game.i18n.localize("DynPog.NoImages"));
+            }
+        } catch (e) {
+            console.warn('[DynPog] Could not browse folder for preview:', e);
+        }
+
+        this._checkProcessAllEnabled();
+    }
+
+    /**
+     * Browse a folder and return only supported image files.
+     * @param {string} folderPath
+     * @returns {Promise<string[]>}
+     */
+    async #getImageFilesFromFolder(folderPath) {
+        const browseResult = await FilePicker.browse("data", folderPath);
+        return browseResult.files.filter(f => this.#isImagePath(f));
+    }
+
+    /**
+     * @param {string} filePath
+     * @returns {boolean}
+     */
+    #isImagePath(filePath) {
+        const lower = filePath.toLowerCase();
+        return ['.png', '.webp', '.jpg', '.jpeg'].some(ext => lower.endsWith(ext));
+    }
+
+    /**
+     * @param {string} filePath
+     * @returns {string}
+     */
+    #getFolderPath(filePath) {
+        const idx = filePath.lastIndexOf('/');
+        if (idx < 0) return '';
+        return this.#normalizeFolderPath(filePath.slice(0, idx));
+    }
+
+    /**
+     * @param {string} folderPath
+     * @returns {string}
+     */
+    #normalizeFolderPath(folderPath) {
+        if (!folderPath) return '';
+        const normalized = folderPath.replace(/^\//, '');
+        return normalized.endsWith('/') ? normalized : `${normalized}/`;
     }
 
     /**
@@ -400,13 +514,8 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
                 progressStatus.textContent = game.i18n.localize("DynPog.Scanning");
             }
 
-            // Scan source directory for image files
-            const browseResult = await FilePicker.browse("data", this._sourceDir);
-            const imageExtensions = ['.png', '.webp', '.jpg', '.jpeg'];
-            const imageFiles = browseResult.files.filter(f => {
-                const lower = f.toLowerCase();
-                return imageExtensions.some(ext => lower.endsWith(ext));
-            });
+            // Scan selected source image or selected source directory for image files
+            const imageFiles = this._sourceFiles ? this._sourceFiles : await this.#getImageFilesFromFolder(this._sourceDir);
 
             const total = imageFiles.length;
             if (total === 0) {
