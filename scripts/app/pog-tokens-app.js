@@ -611,12 +611,12 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
      * @param {number} w  Canvas width
      * @param {number} h  Canvas height
      */
-    _drawCheckerboard(ctx, w, h) {
+    _drawCheckerboard(ctx, w, h, offsetX = 0, offsetY = 0) {
         const sz = Math.max(8, Math.floor(Math.min(w, h) / 32));
         for (let y = 0; y < h; y += sz) {
             for (let x = 0; x < w; x += sz) {
                 ctx.fillStyle = ((x / sz + y / sz) % 2 === 0) ? "#ffffff" : "#cccccc";
-                ctx.fillRect(x, y, sz, sz);
+                ctx.fillRect(offsetX + x, offsetY + y, Math.min(sz, w - x), Math.min(sz, h - y));
             }
         }
     }
@@ -673,7 +673,7 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
             this._lastResult = result;
             this._lastSourceBasename = filePath.split('/').pop() || filePath;
 
-            // --- Before panel: source at 66.8% scale, centred with checkerboard padding ---
+            // --- Before panel: source scaled so non-transparent content matches the processed token size ---
             if (beforeImg) {
                 if (beforeImg._objectUrl) URL.revokeObjectURL(beforeImg._objectUrl);
 
@@ -684,28 +684,36 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
                     i.src = filePath;
                 });
 
-                const scale = 0.668;
-                const pad = 16; // checkerboard padding around image
+                const contentBounds = result.stats.contentBounds || {
+                    x: 0,
+                    y: 0,
+                    width: srcImg.naturalWidth,
+                    height: srcImg.naturalHeight,
+                };
+                const scale = Math.max(result.afterData.width, result.afterData.height) / Math.max(contentBounds.width, contentBounds.height);
                 const iw = Math.round(srcImg.naturalWidth * scale);
                 const ih = Math.round(srcImg.naturalHeight * scale);
-                const cw = iw + pad * 2;
-                const ch = ih + pad * 2;
+                const cw = result.afterData.canvasSize;
+                const ch = result.afterData.canvasSize;
+                const dx = Math.round((cw - iw) / 2);
+                const dy = Math.round((ch - ih) / 2);
 
                 const canvas = document.createElement("canvas");
                 canvas.width = cw;
                 canvas.height = ch;
                 const ctx = canvas.getContext("2d");
 
-                // 1. Checkerboard over entire canvas (shows in padding areas)
-                this._drawCheckerboard(ctx, cw, ch);
+                // 1. Checkerboard only inside the source image rectangle.
+                // Areas outside the source canvas remain transparent/dark; they are not part of the image.
+                this._drawCheckerboard(ctx, iw, ih, dx, dy);
 
-                // 2. Draw source image at 66.8%, offset by pad
-                ctx.drawImage(srcImg, pad, pad, iw, ih);
+                // 2. Draw source image so its non-transparent content matches the After token size.
+                ctx.drawImage(srcImg, dx, dy, iw, ih);
 
-                // 3. Light gray box around the token boundary
+                // 3. Light gray box around the source image canvas boundary.
                 ctx.strokeStyle = "#888888";
                 ctx.lineWidth = 1;
-                ctx.strokeRect(pad - 0.5, pad - 0.5, iw + 1, ih + 1);
+                ctx.strokeRect(dx + 0.5, dy + 0.5, iw - 1, ih - 1);
 
                 const blob = await new Promise((resolve, reject) => {
                     canvas.toBlob(b => b ? resolve(b) : reject(new Error("toBlob null")), "image/png");

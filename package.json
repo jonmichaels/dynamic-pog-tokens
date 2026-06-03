@@ -4,7 +4,7 @@
   "scripts": {
     "build": "npx webpack --config webpack.config.js --mode production",
     "watch": "npx webpack --config webpack.config.js --mode development --watch",
-    "test": "node tests/static-upload-args.test.mjs && node tests/static-restore-defaults.test.mjs && node tests/static-circular-trim.test.mjs && node tests/static-content-bounds.test.mjs && node tests/static-source-picker.test.mjs"
+    "test": "node tests/static-upload-args.test.mjs && node tests/static-restore-defaults.test.mjs && node tests/static-circular-trim.test.mjs && node tests/static-content-bounds.test.mjs && node tests/static-source-picker.test.mjs && node tests/static-before-preview.test.mjs"
   },
   "devDependencies": {
     "css-loader": "^7.1.2",
