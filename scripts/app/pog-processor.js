@@ -164,6 +164,36 @@ function floodFillCorners(imageData, width, height, bgColor, threshold) {
   }
 }
 
+/**
+ * Remove the annular edge band left by circular pog borders after the square
+ * crop. The trim control means "move the circular edge inward by N pixels",
+ * not only "crop N pixels from the square bounds".
+ *
+ * @param {HTMLCanvasElement|OffscreenCanvas} canvas  Cropped token canvas
+ */
+function applyCircularEdgeTrim(canvas) {
+  const width = canvas.width;
+  const height = canvas.height;
+  const ctx = canvas.getContext('2d');
+  const imageData = ctx.getImageData(0, 0, width, height);
+
+  const centerX = (width - 1) / 2;
+  const centerY = (height - 1) / 2;
+  const radius = Math.min(width, height) / 2;
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const distanceFromCenter = Math.hypot(x - centerX, y - centerY);
+      if (distanceFromCenter > radius) {
+        const idx = (y * width + x) * 4;
+        imageData.data[idx + 3] = 0;
+      }
+    }
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+}
+
 // ---------------------------------------------------------------------------
 // pica singleton
 // ---------------------------------------------------------------------------
@@ -541,6 +571,18 @@ export async function processToken(src, options = {}) {
     masked = maskResult.maskApplied;
   }
   steps.push('mask');
+
+  // --- Step 3b: Circular edge trim ---
+  // Apply after background masking so trim-created transparency does not cause
+  // maskImage to skip flood-fill background removal.
+  if (trimPx > 0) {
+    const circularTrimCanvas = createCanvas(workingW, workingH);
+    const circularTrimCtx = circularTrimCanvas.getContext('2d');
+    circularTrimCtx.drawImage(workingBitmap, 0, 0);
+    applyCircularEdgeTrim(circularTrimCanvas);
+    workingBitmap = await canvasToBitmap(circularTrimCanvas);
+  }
+  steps.push('circular-trim');
 
   // --- Step 4: Calculate target size (or use override) ---
   let sizing;
