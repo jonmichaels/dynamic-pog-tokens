@@ -7,6 +7,8 @@
 
 Batch-process pog-style (circular) tokens to add support for **Foundry VTT Dynamic Token Rings**. The final token will have the subject centered and 2/3 of the size with a transparent background that extends the remaining 1/3 of the size. Trim tokens to remove existing rings. Add to mask to JPEGs and other tokens without a transparent background. Resize with high-quality Lanczos3 scaling via pica.
 
+![Dynamic Pog Tokens interface screenshot](screenshot.webp)
+
 ## Features
 
 | Feature | Description |
