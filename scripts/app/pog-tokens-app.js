@@ -887,11 +887,11 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
 
                 // 3. Ring (non-blocking — draw token first, then add ring)
                 const ringPromise = this._ensureRingCache().then(cache => {
-                    const sizes = [2048, 1024, 512, 256];
+                    const sizes = [2048, 1536, 1024, 512, 256];
                     let fn = null;
                     for (const s of sizes) {
                         if (cs >= s) {
-                            const map = { 2048: "token-ring-gargantuan", 1024: "token-ring-large-huge", 512: "token-ring-med", 256: "token-ring-tiny" };
+                            const map = { 2048: "token-ring-gargantuan", 1536: "token-ring-large-huge", 1024: "token-ring-large-huge", 512: "token-ring-med", 256: "token-ring-tiny" };
                             fn = map[s];
                             break;
                         }
@@ -1007,11 +1007,11 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
         }
 
         const cache = await this._ensureRingCache();
-        const sizes = [2048, 1024, 512, 256];
+        const sizes = [2048, 1536, 1024, 512, 256];
         let frameName = null;
         for (const size of sizes) {
             if (canvasSize >= size) {
-                const frameMap = { 2048: "token-ring-gargantuan", 1024: "token-ring-large-huge", 512: "token-ring-med", 256: "token-ring-tiny" };
+                const frameMap = { 2048: "token-ring-gargantuan", 1536: "token-ring-large-huge", 1024: "token-ring-large-huge", 512: "token-ring-med", 256: "token-ring-tiny" };
                 frameName = frameMap[size];
                 break;
             }

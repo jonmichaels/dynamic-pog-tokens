@@ -84,7 +84,7 @@ config.spritesheet; // "canvas/tokens/rings-steel.json"
 ```
 
 ### Ring Compositing in Preview
-`_loadAndPreview` composites: checkerboard (transparency) → token → ring texture (extracted from spritesheet frame). The ring frame is selected by matching the output canvas size (256/512/1024/2048) to the spritesheet frame.
+`_loadAndPreview` composites: checkerboard (transparency) → token → ring texture (extracted from spritesheet frame). The ring frame is selected by matching the output canvas size (256/512/1024/1536/2048) to the spritesheet frame. Huge 1536 output intentionally uses the `token-ring-large-huge` frame scaled to the 1536 canvas because Foundry's core spritesheet uses the same large/huge artwork family.
 
 ### Current State (Hardcoded)
 Ring sizes are hardcoded in `pog-processor.js` — `RING_SIZES` table: Matches standard dnd5e/Black Flag sizes:
@@ -93,9 +93,9 @@ const RING_SIZES = [
   { name: 'tiny', ring: 172, canvas: 256 },
   { name: 'sm',   ring: 344, canvas: 512 },
   { name: 'med',  ring: 344, canvas: 512 },
-  { name: 'lg',   ring: 684, canvas: 1024 },
-  { name: 'huge', ring: 684, canvas: 1024 },
-  { name: 'grg',  ring: 684, canvas: 1024 },
+  { name: 'lg',   ring: 684,  canvas: 1024 },
+  { name: 'huge', ring: 1026, canvas: 1536 },
+  { name: 'grg',  ring: 1368, canvas: 2048 },
 ];
 ```
 

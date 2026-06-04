@@ -44,6 +44,12 @@ assert.match(
 
 assert.match(
   source,
+  /1536:\s*"token-ring-large-huge"/,
+  '1536px Huge previews/exports must explicitly use the large-huge ring frame scaled to the Huge canvas'
+);
+
+assert.match(
+  source,
   /const\s+url2\s*=\s*URL\.createObjectURL\(blob2\);[\s\S]*if\s*\(requestId\s*!==\s*this\._previewRequestId\)\s*{[\s\S]*URL\.revokeObjectURL\(url2\);[\s\S]*return;[\s\S]*afterImg\._objectUrl\s*=\s*url2/,
   'final ring-composited preview must re-check request id after toBlob before assigning afterImg.src'
 );

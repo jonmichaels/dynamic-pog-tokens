@@ -303,6 +303,7 @@ function getPica() {
 
 /**
  * Standard ring sizes.
+ * Subject diameters preserve the module's existing Large ratio: 684@1024.
  * @type {Array<{name: string, ring: number, canvas: number}>}
  */
 const RING_SIZES = [
@@ -310,9 +311,12 @@ const RING_SIZES = [
   { name: 'sm',   ring: 344, canvas: 512 },
   { name: 'med',  ring: 344, canvas: 512 },
   { name: 'lg',   ring: 684, canvas: 1024 },
-  { name: 'huge', ring: 684, canvas: 1024 },
-  { name: 'grg',  ring: 684, canvas: 1024 },
+  { name: 'huge', ring: 1026, canvas: 1536 },
+  { name: 'grg',  ring: 1368, canvas: 2048 },
 ];
+
+const LARGE_SIZE_NAMES = new Set(['tiny', 'sm', 'med', 'lg']);
+const MAX_LARGE_TIER_UPSCALE_RATIO = 1.10;
 
 // ---------------------------------------------------------------------------
 // 1. loadImage
@@ -442,8 +446,11 @@ export async function maskImage(trimmedBitmap, threshold = 128) {
  * QUICK MODE:  canvas = maxDimension × 1.491, rounded to nearest even.
  *              No standard ring-sizing; simple padded canvas.
  *
- * OPTIMIZED MODE:  Find the smallest standard ring >= subject's max dimension
- *                  (minimal upscale). If subject > 684 px, downscale to 684.
+ * OPTIMIZED MODE:  Existing Tiny through Large behavior remains smallest
+ *                  standard ring >= subject. Huge/Gargantuan allow only
+ *                  modest uprez; if the larger tier would blur the image,
+ *                  use the previous ring and downrez instead. Maximum output
+ *                  is Gargantuan: 1368 subject on 2048 canvas.
  *
  * @param {number} subjectWidth
  * @param {number} subjectHeight
@@ -464,16 +471,22 @@ export function calculateTargetSize(subjectWidth, subjectHeight, mode) {
     };
   }
 
-  // Optimized mode: match to standard ring
-  const targetDim = maxDim > 684 ? 684 : maxDim;
-
-  // Find smallest ring >= targetDim
-  let best = RING_SIZES[RING_SIZES.length - 1]; // default to largest
+  // Optimized mode: match to standard ring. Keep existing Tiny-Large uprez
+  // behavior, but avoid blurry over-uprez for Huge/Gargantuan tiers.
+  let best = RING_SIZES[0];
   for (const entry of RING_SIZES) {
-    if (entry.ring >= targetDim) {
-      best = entry;
+    if (maxDim <= entry.ring) {
+      if (LARGE_SIZE_NAMES.has(entry.name)) {
+        best = entry;
+      } else {
+        const upscaleRatio = entry.ring / maxDim;
+        best = upscaleRatio <= MAX_LARGE_TIER_UPSCALE_RATIO
+          ? entry
+          : best;
+      }
       break;
     }
+    best = entry;
   }
 
   return {
