@@ -8,14 +8,20 @@ const source = readFileSync(join(__dirname, '..', 'scripts', 'app', 'pog-tokens-
 
 assert.match(
   source,
-  /source scaled so non-transparent content matches the processed token size/,
-  'before preview should document matching non-transparent content size to after preview'
+  /source scaled so non-transparent content matches the processed token size|source crop so its effective square content matches the After token size/,
+  'before preview should document matching effective source content size to after preview'
 );
 
 assert.match(
   source,
-  /const scale = Math\.max\(result\.afterData\.width, result\.afterData\.height\) \/ Math\.max\(contentBounds\.width, contentBounds\.height\)/,
-  'before preview should derive scale from processed token size and detected content bounds'
+  /const scale = Math\.max\(result\.afterData\.width, result\.afterData\.height\) \/ Math\.max\(cropSource\.width, cropSource\.height\)/,
+  'before preview should derive scale from processed token size and effective crop bounds'
+);
+
+assert.match(
+  source,
+  /ctx\.drawImage\(\s*srcImg,\s*cropSource\.x,\s*cropSource\.y,\s*cropSource\.width,\s*cropSource\.height,/,
+  'before preview should draw the same effective square crop used by processing'
 );
 
 assert.match(

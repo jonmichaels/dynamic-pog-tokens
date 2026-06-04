@@ -813,9 +813,22 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
                     width: srcImg.naturalWidth,
                     height: srcImg.naturalHeight,
                 };
-                const scale = Math.max(result.afterData.width, result.afterData.height) / Math.max(contentBounds.width, contentBounds.height);
-                const iw = Math.round(srcImg.naturalWidth * scale);
-                const ih = Math.round(srcImg.naturalHeight * scale);
+                const squareCrop = result.stats.squareCrop || {
+                    x: 0,
+                    y: 0,
+                    width: contentBounds.width,
+                    height: contentBounds.height,
+                    cropped: false,
+                };
+                const cropSource = {
+                    x: contentBounds.x + squareCrop.x,
+                    y: contentBounds.y + squareCrop.y,
+                    width: squareCrop.width,
+                    height: squareCrop.height,
+                };
+                const scale = Math.max(result.afterData.width, result.afterData.height) / Math.max(cropSource.width, cropSource.height);
+                const iw = Math.round(cropSource.width * scale);
+                const ih = Math.round(cropSource.height * scale);
                 const cw = result.afterData.canvasSize;
                 const ch = result.afterData.canvasSize;
                 const dx = Math.round((cw - iw) / 2);
@@ -830,8 +843,18 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
                 // Areas outside the source canvas remain transparent/dark; they are not part of the image.
                 this._drawCheckerboard(ctx, iw, ih, dx, dy);
 
-                // 2. Draw source image so its non-transparent content matches the After token size.
-                ctx.drawImage(srcImg, dx, dy, iw, ih);
+                // 2. Draw source crop so its effective square content matches the After token size.
+                ctx.drawImage(
+                    srcImg,
+                    cropSource.x,
+                    cropSource.y,
+                    cropSource.width,
+                    cropSource.height,
+                    dx,
+                    dy,
+                    iw,
+                    ih,
+                );
 
                 // 3. Light gray box around the source image canvas boundary.
                 ctx.strokeStyle = "#888888";

@@ -280,6 +280,47 @@ async function cropTransparentPadding(imageBitmap) {
   };
 }
 
+/**
+ * Best-effort square crop for rectangular sources.
+ * Uses the smaller dimension as the output square and removes equal pixels from
+ * both sides of the larger dimension.
+ *
+ * @param {ImageBitmap} imageBitmap
+ * @returns {Promise<{squareBitmap: ImageBitmap, squareWidth: number, squareHeight: number, squareCrop: Object}>}
+ */
+async function centerCropToSquare(imageBitmap) {
+  const size = Math.min(imageBitmap.width, imageBitmap.height);
+  const sx = Math.floor((imageBitmap.width - size) / 2);
+  const sy = Math.floor((imageBitmap.height - size) / 2);
+  const squareCrop = {
+    x: sx,
+    y: sy,
+    width: size,
+    height: size,
+    cropped: imageBitmap.width !== imageBitmap.height,
+  };
+
+  if (!squareCrop.cropped) {
+    return {
+      squareBitmap: imageBitmap,
+      squareWidth: imageBitmap.width,
+      squareHeight: imageBitmap.height,
+      squareCrop,
+    };
+  }
+
+  const canvas = createCanvas(size, size);
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(imageBitmap, sx, sy, size, size, 0, 0, size, size);
+
+  return {
+    squareBitmap: await canvasToBitmap(canvas),
+    squareWidth: size,
+    squareHeight: size,
+    squareCrop,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // pica singleton
 // ---------------------------------------------------------------------------
@@ -655,6 +696,7 @@ export async function processToken(src, options = {}) {
   let workingW = origW;
   let workingH = origH;
   let contentBounds = { x: 0, y: 0, width: origW, height: origH, cropped: false };
+  let squareCrop = { x: 0, y: 0, width: origW, height: origH, cropped: false };
 
   const cropResult = await cropTransparentPadding(workingBitmap);
   workingBitmap = cropResult.croppedBitmap;
@@ -662,6 +704,14 @@ export async function processToken(src, options = {}) {
   workingH = cropResult.croppedHeight;
   contentBounds = cropResult.contentBounds;
   steps.push('content-bounds');
+
+  // --- Step 2b: Best-effort centered square crop for rectangular sources ---
+  const squareResult = await centerCropToSquare(workingBitmap);
+  workingBitmap = squareResult.squareBitmap;
+  workingW = squareResult.squareWidth;
+  workingH = squareResult.squareHeight;
+  squareCrop = squareResult.squareCrop;
+  steps.push('square-crop');
 
   // --- Step 3: Trim ---
   if (trimPx > 0) {
@@ -674,7 +724,7 @@ export async function processToken(src, options = {}) {
   }
   steps.push('trim');
 
-  // --- Step 3: Mask ---
+  // --- Step 4: Mask ---
   if (maskEnabled) {
     const maskResult = await maskImage(workingBitmap, maskThreshold);
     workingBitmap = maskResult.maskedBitmap;
@@ -682,7 +732,7 @@ export async function processToken(src, options = {}) {
   }
   steps.push('mask');
 
-  // --- Step 3b: Circular edge trim ---
+  // --- Step 4b: Circular edge trim ---
   // Apply after background masking so trim-created transparency does not cause
   // maskImage to skip flood-fill background removal.
   if (trimPx > 0) {
@@ -751,6 +801,7 @@ export async function processToken(src, options = {}) {
       trimmed,
       masked,
       contentBounds,
+      squareCrop,
       appliedTrimPx,
       previewTrimPx,
       steps,

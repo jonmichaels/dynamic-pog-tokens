@@ -1,6 +1,6 @@
 # Dynamic Pog Tokens
 
-Foundry VTT module (v13+) for batch-processing pog-style token images into Dynamic Token Rings format. Processes square token images through Canvas API + pica (Lanczos3) pipeline: trim edges, flood-fill background mask, resize to ring dimensions, center on transparent canvas.
+Foundry VTT module (v13+) for batch-processing pog-style token images into Dynamic Token Rings format. Processes token images through Canvas API + pica (Lanczos3) pipeline: trim transparent padding, center-crop rectangular sources to the smaller square dimension, trim edges, flood-fill background mask, resize to ring dimensions, center on transparent canvas.
 
 ## Module ID
 `dynamic-pog-tokens`
@@ -116,7 +116,7 @@ If custom spritesheets with different `gridTarget` values are added, read them d
 ## Dev Commands
 ```bash
 npm run build    # Webpack production build
-npm test         # None configured yet
+npm test         # Static regression suite
 ```
 
 ## Symlinks (Noisy)
