@@ -193,8 +193,10 @@
 /* ── Progress bar ── */
 .dpog-progress {
     display: flex;
+    flex: 1 1 auto;
     flex-direction: column;
     gap: 4px;
+    min-width: 0;
     padding: 8px;
     background: var(--color-bg-secondary, #1e1e1e);
     border: 1px solid var(--color-border-dark, #444);
@@ -217,17 +219,29 @@
     transition: width 0.3s ease;
 }
 
+.dpog-progress-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
 .dpog-progress-text {
+    flex: 0 0 auto;
     font-size: 18px;
     font-weight: bold;
     color: var(--color-text-bright, #fff);
-    text-align: center;
+    text-align: left;
 }
 
 .dpog-progress-status {
+    flex: 1 1 auto;
+    min-width: 0;
     font-size: 11px;
     color: var(--color-text-muted, #888);
-    text-align: center;
+    text-align: right;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 /* ── Action buttons ── */

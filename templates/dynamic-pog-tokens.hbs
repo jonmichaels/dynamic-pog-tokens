@@ -135,17 +135,17 @@
         </div>
     </div>
 
-    <!-- Progress bar with percentage -->
-    <div class="dpog-progress dpog-hidden" id="dpog-progress-section">
-        <div class="dpog-progress-bar">
-            <div class="dpog-progress-fill" id="dpog-progress-fill" style="width: 0%;"></div>
-        </div>
-        <span class="dpog-progress-text" id="dpog-progress-text">0%</span>
-        <span class="dpog-progress-status" id="dpog-progress-status">{{localize "DynPog.Ready"}}</span>
-    </div>
-
-    <!-- Action button -->
+    <!-- Progress bar and action button -->
     <div class="dpog-action-section">
+        <div class="dpog-progress dpog-hidden" id="dpog-progress-section">
+            <div class="dpog-progress-bar">
+                <div class="dpog-progress-fill" id="dpog-progress-fill" style="width: 0%;"></div>
+            </div>
+            <div class="dpog-progress-meta">
+                <span class="dpog-progress-text" id="dpog-progress-text">0%</span>
+                <span class="dpog-progress-status" id="dpog-progress-status">{{localize "DynPog.Ready"}}</span>
+            </div>
+        </div>
         <button type="button" id="dpog-process-all" class="dpog-process-all-btn" disabled>
             <i class="fa-solid fa-play"></i> {{localize "DynPog.Process"}}
         </button>
