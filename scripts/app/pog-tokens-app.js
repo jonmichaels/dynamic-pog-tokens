@@ -875,7 +875,10 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
                     };
                     i.src = url;
                 });
-                ctx.drawImage(tokenImg, 0, 0);
+                const previewTrimPx = Math.max(0, Number(result.stats.previewTrimPx) || 0);
+                const previewTokenSize = cs + (previewTrimPx * 2);
+                const previewTokenOffset = -previewTrimPx;
+                ctx.drawImage(tokenImg, previewTokenOffset, previewTokenOffset, previewTokenSize, previewTokenSize);
 
                 // 3. Ring (non-blocking — draw token first, then add ring)
                 const ringPromise = this._ensureRingCache().then(cache => {

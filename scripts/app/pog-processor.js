@@ -700,6 +700,10 @@ export async function processToken(src, options = {}) {
   }
   steps.push('size');
 
+  const previewTrimPx = appliedTrimPx > 0
+    ? Math.round(appliedTrimPx * (sizing.ringDiameter / Math.max(workingW, workingH)))
+    : 0;
+
   // --- Step 5: Resize to ring ---
   const { resizedBitmap, scaledWidth, scaledHeight } = await resizeToRing(
     workingBitmap,
@@ -734,6 +738,8 @@ export async function processToken(src, options = {}) {
       trimmed,
       masked,
       contentBounds,
+      appliedTrimPx,
+      previewTrimPx,
       steps,
     },
   };
