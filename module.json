@@ -2,7 +2,7 @@
   "id": "dynamic-pog-tokens",
   "title": "Dynamic Pog Tokens",
   "description": "Process pog-style tokens for Foundry VTT Dynamic Token Rings. Batch resize, trim, and mask tokens with high-quality Lanczos3 scaling.",
-  "version": "0.1.0",
+  "version": "1.0",
   "authors": [
     {
       "name": "Jon Michaels",
