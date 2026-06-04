@@ -23,6 +23,8 @@ assert.match(template, /{{localize "DynPog\.IncludeRing"}}/, 'Export Ring checkb
 assert.match(template, /id="dpog-select-images" class="dpog-select-btn dpog-source-dest-btn"/, 'Source picker button must use compact matched-width button class');
 assert.match(template, /id="dpog-browse-dest" class="dpog-select-btn dpog-source-dest-btn"/, 'Destination picker button must match source button width');
 assert.match(template, /dpog-ring-row/, 'Ring Size row must be constrained to match Prefix input column width');
+assert.match(template, /dpog-control-row dpog-section-divider/, 'Quality section must have a divider');
+assert.match(template, /dpog-control-grid dpog-section-divider/, 'Export section must have a divider');
 
 assert.match(template, /id="dpog-threshold"/, 'Threshold value must remain in DOM for required mask processing data');
 assert.match(template, /dpog-threshold-row[^\n"]*dpog-hidden|dpog-hidden[^\n"]*dpog-threshold-row/, 'Threshold row must stay hidden from the UI');
