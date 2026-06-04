@@ -46,11 +46,11 @@
             <label class="dpog-control-label">{{localize "DynPog.Quality"}}</label>
             <div class="dpog-radio-group">
                 <label class="dpog-radio-label">
-                    <input type="radio" name="quality" value="quick" />
+                    <input type="radio" name="quality" value="quick" checked />
                     <span>{{localize "DynPog.Quick"}}</span>
                 </label>
                 <label class="dpog-radio-label">
-                    <input type="radio" name="quality" value="optimized" checked />
+                    <input type="radio" name="quality" value="optimized" />
                     <span>{{localize "DynPog.Optimized"}}</span>
                 </label>
             </div>
@@ -98,13 +98,13 @@
             <!-- Output filename prefix -->
             <div class="dpog-control-row dpog-control-field">
                 <label class="dpog-control-label" for="dpog-prefix">{{localize "DynPog.Prefix"}}</label>
-                <input type="text" id="dpog-prefix" name="prefix" value="dynamic_ring_" class="dpog-text-input" />
+                <input type="text" id="dpog-prefix" name="prefix" value="" class="dpog-text-input" />
             </div>
 
             <!-- Output filename suffix -->
             <div class="dpog-control-row dpog-control-field">
                 <label class="dpog-control-label" for="dpog-suffix">{{localize "DynPog.Suffix"}}</label>
-                <input type="text" id="dpog-suffix" name="suffix" value="" class="dpog-text-input" />
+                <input type="text" id="dpog-suffix" name="suffix" value="_dr" class="dpog-text-input" />
             </div>
         </div>
 

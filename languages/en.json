@@ -49,6 +49,22 @@
         "ProcessingFile": "Processing: {name} ({current}/{total})",
         "Done": "Done: {count} tokens processed",
         "DoneWithErrors": "Done: {count} tokens processed ({errors} errors)",
-        "BatchError": "Batch processing failed: {message}"
+        "BatchError": "Batch processing failed: {message}",
+        "SettingsDefaultQuality": "Default Quality",
+        "SettingsDefaultQualityHint": "Quality mode selected when opening Dynamic Pog Tokens without a saved last-used state.",
+        "SettingsDefaultTrim": "Default Trim",
+        "SettingsDefaultTrimHint": "Default circular edge trim in pixels.",
+        "SettingsDefaultMask": "Default Mask",
+        "SettingsDefaultMaskHint": "Whether background masking is enabled by default.",
+        "SettingsDefaultRingSize": "Default Ring Size",
+        "SettingsDefaultRingSizeHint": "Ring size selected by default.",
+        "SettingsDefaultPrefix": "Default Prefix",
+        "SettingsDefaultPrefixHint": "Default text added before each output filename.",
+        "SettingsDefaultSuffix": "Default Suffix",
+        "SettingsDefaultSuffixHint": "Default text added after each output filename before the extension.",
+        "SettingsDefaultFormat": "Default Export Format",
+        "SettingsDefaultFormatHint": "Default file format for exported tokens.",
+        "SettingsDefaultIncludeRing": "Default Export Ring",
+        "SettingsDefaultIncludeRingHint": "Whether output files include the Foundry dynamic token ring by default."
     }
 }

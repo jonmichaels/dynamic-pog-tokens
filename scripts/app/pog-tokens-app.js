@@ -14,6 +14,91 @@ import { processToken } from './pog-processor.js';
 /** @type {string} Base path for module assets */
 const MODULE_PATH = "modules/dynamic-pog-tokens";
 
+const MODULE_ID = "dynamic-pog-tokens";
+
+const DEFAULT_SETTINGS = {
+    trimPx: 0,
+    maskEnabled: false,
+    maskThreshold: 128,
+    mode: 'quick',
+    format: 'image/webp',
+    quality: 0.92,
+    ringOverride: 'auto',
+    prefix: '',
+    suffix: '_dr',
+    includeRing: false,
+};
+
+const DEFAULT_SETTING_DEFINITIONS = {
+    defaultMode: {
+        key: 'mode',
+        name: 'DynPog.SettingsDefaultQuality',
+        hint: 'DynPog.SettingsDefaultQualityHint',
+        type: String,
+        default: DEFAULT_SETTINGS.mode,
+        choices: { quick: 'DynPog.Quick', optimized: 'DynPog.Optimized' },
+    },
+    defaultTrimPx: {
+        key: 'trimPx',
+        name: 'DynPog.SettingsDefaultTrim',
+        hint: 'DynPog.SettingsDefaultTrimHint',
+        type: Number,
+        default: DEFAULT_SETTINGS.trimPx,
+        range: { min: 0, max: 100, step: 1 },
+    },
+    defaultMaskEnabled: {
+        key: 'maskEnabled',
+        name: 'DynPog.SettingsDefaultMask',
+        hint: 'DynPog.SettingsDefaultMaskHint',
+        type: Boolean,
+        default: DEFAULT_SETTINGS.maskEnabled,
+    },
+    defaultRingOverride: {
+        key: 'ringOverride',
+        name: 'DynPog.SettingsDefaultRingSize',
+        hint: 'DynPog.SettingsDefaultRingSizeHint',
+        type: String,
+        default: DEFAULT_SETTINGS.ringOverride,
+        choices: {
+            auto: 'DynPog.RingAuto',
+            tiny: 'DynPog.RingTiny',
+            sm: 'DynPog.RingSmallMedium',
+            lg: 'DynPog.RingLarge',
+            huge: 'DynPog.RingHuge',
+            grg: 'DynPog.RingGargantuan',
+        },
+    },
+    defaultPrefix: {
+        key: 'prefix',
+        name: 'DynPog.SettingsDefaultPrefix',
+        hint: 'DynPog.SettingsDefaultPrefixHint',
+        type: String,
+        default: DEFAULT_SETTINGS.prefix,
+    },
+    defaultSuffix: {
+        key: 'suffix',
+        name: 'DynPog.SettingsDefaultSuffix',
+        hint: 'DynPog.SettingsDefaultSuffixHint',
+        type: String,
+        default: DEFAULT_SETTINGS.suffix,
+    },
+    defaultFormat: {
+        key: 'format',
+        name: 'DynPog.SettingsDefaultFormat',
+        hint: 'DynPog.SettingsDefaultFormatHint',
+        type: String,
+        default: DEFAULT_SETTINGS.format,
+        choices: { 'image/webp': 'DynPog.Webp', 'image/png': 'DynPog.Png' },
+    },
+    defaultIncludeRing: {
+        key: 'includeRing',
+        name: 'DynPog.SettingsDefaultIncludeRing',
+        hint: 'DynPog.SettingsDefaultIncludeRingHint',
+        type: Boolean,
+        default: DEFAULT_SETTINGS.includeRing,
+    },
+};
+
 /** Foundry v13 — FilePicker is namespaced */
 const FilePicker = foundry.applications.apps.FilePicker.implementation;
 
@@ -44,17 +129,7 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
     };
 
     // Preview settings state
-    _settings = {
-        trimPx: 0,
-        maskEnabled: false,
-        maskThreshold: 128,
-        mode: 'optimized',
-        format: 'image/webp',
-        quality: 0.92,
-        ringOverride: 'auto',
-        suffix: '',
-        includeRing: false,
-    };
+    _settings = { ...DEFAULT_SETTINGS };
 
     /** @type {string|null} Current source folder path */
     _sourceDir = null;
@@ -139,7 +214,9 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
      */
     _restoreSettings() {
         try {
-            const saved = game.settings.get('dynamic-pog-tokens', 'lastSettings');
+            const saved = game.settings.get(MODULE_ID, 'lastSettings');
+            const configuredDefaults = this._getConfiguredDefaults();
+            this._settings = { ...DEFAULT_SETTINGS, ...configuredDefaults };
             if (saved && saved !== '{}') {
                 const parsed = JSON.parse(saved);
                 this._settings = { ...this._settings, ...parsed };
@@ -152,11 +229,27 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
     }
 
     /**
+     * Read configured defaults from the standard Foundry Module Settings page.
+     * @returns {Object}
+     */
+    _getConfiguredDefaults() {
+        const defaults = {};
+        for (const [settingName, definition] of Object.entries(DEFAULT_SETTING_DEFINITIONS)) {
+            try {
+                defaults[definition.key] = game.settings.get(MODULE_ID, settingName);
+            } catch (e) {
+                defaults[definition.key] = definition.default;
+            }
+        }
+        return defaults;
+    }
+
+    /**
      * Save current settings to Foundry game settings.
      */
     _saveSettings() {
         try {
-            game.settings.set('dynamic-pog-tokens', 'lastSettings', JSON.stringify(this._settings));
+            game.settings.set(MODULE_ID, 'lastSettings', JSON.stringify(this._settings));
         } catch (e) {
             console.warn('[DynPog] Failed to save settings:', e);
         }
@@ -199,7 +292,9 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
         const ringSelect = html.querySelector("#dpog-ring-select");
         if (ringSelect) ringSelect.value = this._settings.ringOverride || 'auto';
 
-        // Filename suffix
+        // Filename prefix/suffix
+        const prefixInput = html.querySelector("#dpog-prefix");
+        if (prefixInput) prefixInput.value = this._settings.prefix || '';
         const suffixInput = html.querySelector("#dpog-suffix");
         if (suffixInput) suffixInput.value = this._settings.suffix || '';
 
@@ -276,7 +371,11 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
             ringSelect.addEventListener("change", () => this._onSettingsChange());
         }
 
-        // Filename suffix — persist with settings without re-rendering preview.
+        // Filename prefix/suffix — persist with settings without re-rendering preview.
+        const prefixInput = html.querySelector("#dpog-prefix");
+        if (prefixInput) {
+            prefixInput.addEventListener("input", () => this._updateOutputSettingsOnly());
+        }
         const suffixInput = html.querySelector("#dpog-suffix");
         if (suffixInput) {
             suffixInput.addEventListener("input", () => this._updateOutputSettingsOnly());
@@ -493,7 +592,7 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
 
             // Get prefix/suffix from inputs
             const prefixInput = html.querySelector("#dpog-prefix");
-            const prefix = prefixInput ? (prefixInput.value || "dynamic_ring_") : "dynamic_ring_";
+            const prefix = prefixInput ? (prefixInput.value || "") : "";
             const suffixInput = html.querySelector("#dpog-suffix");
             const suffix = suffixInput ? (suffixInput.value || "") : "";
 
@@ -972,6 +1071,7 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
             ? 'image/webp'
             : 'image/png';
         this._settings.ringOverride = html.querySelector("#dpog-ring-select")?.value || 'auto';
+        this._settings.prefix = html.querySelector("#dpog-prefix")?.value || '';
         this._settings.suffix = html.querySelector("#dpog-suffix")?.value || '';
         this._settings.includeRing = html.querySelector("#dpog-include-ring")?.checked || false;
 
@@ -986,6 +1086,7 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
      */
     _updateOutputSettingsOnly() {
         const html = this.element;
+        this._settings.prefix = html.querySelector("#dpog-prefix")?.value || '';
         this._settings.suffix = html.querySelector("#dpog-suffix")?.value || '';
         this._settings.includeRing = html.querySelector("#dpog-include-ring")?.checked || false;
     }
@@ -1008,8 +1109,22 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
  * Registers hooks and adds UI controls.
  */
 export function initDynamicPogTokens() {
-    // Register game settings for persistence
-    game.settings.register('dynamic-pog-tokens', 'lastSettings', {
+    // Register configurable defaults in Foundry's standard Module Settings page.
+    for (const [settingName, definition] of Object.entries(DEFAULT_SETTING_DEFINITIONS)) {
+        game.settings.register(MODULE_ID, settingName, {
+            name: definition.name,
+            hint: definition.hint,
+            scope: 'world',
+            config: true,
+            default: definition.default,
+            type: definition.type,
+            choices: definition.choices,
+            range: definition.range,
+        });
+    }
+
+    // Register game setting for last-used app state persistence.
+    game.settings.register(MODULE_ID, 'lastSettings', {
         scope: 'world',
         config: false,
         default: '{}',
