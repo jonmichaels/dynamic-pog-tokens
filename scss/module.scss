@@ -191,18 +191,6 @@
 }
 
 /* ── Progress bar ── */
-.dpog-progress {
-    display: flex;
-    flex: 1 1 auto;
-    flex-direction: column;
-    gap: 4px;
-    min-width: 0;
-    padding: 8px;
-    background: var(--color-bg-secondary, #1e1e1e);
-    border: 1px solid var(--color-border-dark, #444);
-    border-radius: 6px;
-}
-
 .dpog-progress-bar {
     flex: 1 1 auto;
     min-width: 0;
@@ -218,13 +206,6 @@
     background: var(--color-bg-accent, #4a3);
     border-radius: 8px;
     transition: width 0.3s ease;
-}
-
-.dpog-progress-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-width: 0;
 }
 
 .dpog-progress-text {

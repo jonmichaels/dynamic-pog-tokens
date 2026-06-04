@@ -16,14 +16,14 @@ function ruleBlock(selector) {
 
 assert.match(
   template,
-  /<div class="dpog-action-section">[\s\S]*<div class="dpog-progress dpog-hidden" id="dpog-progress-section">[\s\S]*<button type="button" id="dpog-process-all"/,
-  'progress section must live inside the action row before the Process button'
+  /<div class="dpog-action-section">\s*<div class="dpog-progress-bar dpog-hidden"[\s\S]*<span class="dpog-progress-text dpog-hidden" id="dpog-progress-text">0%<\/span>\s*<button type="button" id="dpog-process-all"/,
+  'progress bar and percentage must be direct children of the Process button action row'
 );
 
-assert.match(
+assert.doesNotMatch(
   template,
-  /<div class="dpog-progress-row">[\s\S]*<div class="dpog-progress-bar">[\s\S]*<span class="dpog-progress-text" id="dpog-progress-text">0%<\/span>/,
-  'progress percentage must share the progress bar row and sit to the right of the bar'
+  /id="dpog-progress-section"/,
+  'progress bar and percentage must not be wrapped in a separate progress section div'
 );
 
 assert.doesNotMatch(
@@ -33,21 +33,15 @@ assert.doesNotMatch(
 );
 
 assert.match(
-  ruleBlock('.dpog-progress'),
-  /flex:\s*1\s+1\s+auto;/,
-  'progress section must consume available space to the left of the fixed Process button'
-);
-
-assert.match(
-  ruleBlock('.dpog-progress-row'),
+  ruleBlock('.dpog-action-section'),
   /display:\s*flex;/,
-  'progress row must place bar and percentage on the same line'
+  'action row must place progress bar, percentage, and Process button on the same line'
 );
 
 assert.match(
-  ruleBlock('.dpog-progress-row'),
+  ruleBlock('.dpog-action-section'),
   /align-items:\s*center;/,
-  'progress row must vertically align the bar and percentage'
+  'action row must vertically align progress bar, percentage, and Process button'
 );
 
 assert.match(

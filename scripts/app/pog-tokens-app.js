@@ -556,7 +556,7 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
         this._checkProcessAllEnabled();
 
         const html = this.element;
-        const progressSection = html.querySelector("#dpog-progress-section");
+        const progressBar = html.querySelector(".dpog-progress-bar");
         const progressFill = html.querySelector("#dpog-progress-fill");
         const progressText = html.querySelector("#dpog-progress-text");
 
@@ -573,14 +573,15 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
             // Determine file extension from format setting
             const ext = this._settings.format === 'image/png' ? '.png' : '.webp';
 
-            // Show progress section
-            if (progressSection) {
-                progressSection.classList.remove("dpog-hidden");
+            // Show progress controls in the action row
+            if (progressBar) {
+                progressBar.classList.remove("dpog-hidden");
             }
             if (progressFill) {
                 progressFill.style.width = "0%";
             }
             if (progressText) {
+                progressText.classList.remove("dpog-hidden");
                 progressText.textContent = "0%";
             }
 
