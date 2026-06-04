@@ -1024,7 +1024,10 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
                 img.onerror = reject;
                 img.src = tokenUrl;
             });
-            ctx.drawImage(tokenImg, 0, 0);
+            const exportTrimPx = Math.max(0, Number(result.stats.previewTrimPx) || 0);
+            const exportTokenSize = canvasSize + (exportTrimPx * 2);
+            const exportTokenOffset = -exportTrimPx;
+            ctx.drawImage(tokenImg, exportTokenOffset, exportTokenOffset, exportTokenSize, exportTokenSize);
         } finally {
             URL.revokeObjectURL(tokenUrl);
         }
