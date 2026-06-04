@@ -29,6 +29,15 @@ const DEFAULT_SETTINGS = {
     includeRing: false,
 };
 
+function sanitizeFilenameStem(stem) {
+    return String(stem || '')
+        .trim()
+        .replace(/\s+/g, '_')
+        .replace(/[^A-Za-z0-9_-]+/g, '')
+        .replace(/_+/g, '_')
+        .replace(/^_+|_+$/g, '') || 'token';
+}
+
 const DEFAULT_SETTING_DEFINITIONS = {
     defaultMode: {
         key: 'mode',
@@ -619,7 +628,7 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
 
                     // Build output filename: prefix + original basename + suffix (strip original ext, add new)
                     const nameWithoutExt = basename.replace(/\.[^.]+$/, '');
-                    const outputName = prefix + nameWithoutExt + suffix + ext;
+                    const outputName = sanitizeFilenameStem(prefix + nameWithoutExt + suffix) + ext;
 
                     // Create File object for upload
                     const file = new File([resultBlob], outputName, { type: this._settings.format });

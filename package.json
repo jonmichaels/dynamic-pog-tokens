@@ -4,7 +4,7 @@
   "scripts": {
     "build": "npx webpack --config webpack.config.js --mode production",
     "watch": "npx webpack --config webpack.config.js --mode development --watch",
-    "test": "node tests/static-wireframe-contract.test.mjs && node tests/static-control-row-alignment.test.mjs && node tests/static-progress-action-layout.test.mjs && node tests/static-default-settings.test.mjs && node tests/static-default-settings-override.test.mjs && node tests/static-upload-args.test.mjs && node tests/static-restore-defaults.test.mjs && node tests/static-circular-trim.test.mjs && node tests/static-preview-trim-output-space.test.mjs && node tests/static-after-preview-trim-scale.test.mjs && node tests/static-content-bounds.test.mjs && node tests/static-source-picker.test.mjs && node tests/static-before-preview.test.mjs && node tests/static-ring-preview.test.mjs && node tests/static-square-preview-panels.test.mjs"
+    "test": "node tests/static-wireframe-contract.test.mjs && node tests/static-control-row-alignment.test.mjs && node tests/static-progress-action-layout.test.mjs && node tests/static-filename-sanitization.test.mjs && node tests/static-default-settings.test.mjs && node tests/static-default-settings-override.test.mjs && node tests/static-upload-args.test.mjs && node tests/static-restore-defaults.test.mjs && node tests/static-circular-trim.test.mjs && node tests/static-preview-trim-output-space.test.mjs && node tests/static-after-preview-trim-scale.test.mjs && node tests/static-content-bounds.test.mjs && node tests/static-source-picker.test.mjs && node tests/static-before-preview.test.mjs && node tests/static-ring-preview.test.mjs && node tests/static-square-preview-panels.test.mjs"
   },
   "devDependencies": {
     "css-loader": "^7.1.2",
