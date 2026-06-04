@@ -8,14 +8,14 @@ const template = readFileSync(join(__dirname, '..', 'templates', 'dynamic-pog-to
 const translations = JSON.parse(readFileSync(join(__dirname, '..', 'languages', 'en.json'), 'utf8')).DynPog;
 
 const tooltipKeys = {
-  TooltipQuick: 'Quick: Source image stays the same size. A transparent background canvas extends the dimensions by 1/3.',
-  TooltipOptimized: 'Optimized: The final image will be 256, 512, 1024, 1536, or 2048. The source image will be resized to take up 2/3 of that.',
-  TooltipTrim: 'Trim: Make a circle crop on the source image to remove an existing ring.',
-  TooltipMask: 'Mask: Make the pixels outside the circle transparent. Required for JPEGs and other images without a transparent background.',
-  TooltipRingSize: 'Ring Size: Auto is typically the best setting. Force a particular size by changing the selection.',
-  TooltipPrefix: 'Prefix: Add text to the head of all token filenames.',
-  TooltipSuffix: 'Suffix: Add text to the end of all token filenames. (Before the extension.)',
-  TooltipIncludeRing: 'Include Ring: Print the dynamic ring to the token. Using this setting will hide the actual dynamic ring in Foundry.',
+  TooltipQuick: 'Source image stays the same size. A transparent background canvas extends the dimensions by 1/3.',
+  TooltipOptimized: 'The final image will be 256, 512, 1024, 1536, or 2048. The source image will be resized to take up 2/3 of that.',
+  TooltipTrim: 'Make a circle crop on the source image to remove an existing ring.',
+  TooltipMask: 'Make the pixels outside the circle transparent. Required for JPEGs and other images without a transparent background.',
+  TooltipRingSize: 'Auto is typically the best setting. Force a particular size by changing the selection.',
+  TooltipPrefix: 'Add text to the head of all token filenames.',
+  TooltipSuffix: 'Add text to the end of all token filenames. (Before the extension.)',
+  TooltipIncludeRing: 'Print the dynamic ring to the token. Using this setting will hide the actual dynamic ring in Foundry.',
 };
 
 for (const [key, value] of Object.entries(tooltipKeys)) {
