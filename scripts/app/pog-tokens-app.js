@@ -559,7 +559,6 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
         const progressSection = html.querySelector("#dpog-progress-section");
         const progressFill = html.querySelector("#dpog-progress-fill");
         const progressText = html.querySelector("#dpog-progress-text");
-        const progressStatus = html.querySelector("#dpog-progress-status");
 
         try {
             // Read settings before processing starts
@@ -584,18 +583,13 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
             if (progressText) {
                 progressText.textContent = "0%";
             }
-            if (progressStatus) {
-                progressStatus.textContent = game.i18n.localize("DynPog.Scanning");
-            }
 
             // Scan selected source image or selected source directory for image files
             const imageFiles = this._sourceFiles ? this._sourceFiles : await this.#getImageFilesFromFolder(this._sourceDir);
 
             const total = imageFiles.length;
             if (total === 0) {
-                if (progressStatus) {
-                    progressStatus.textContent = game.i18n.localize("DynPog.NoImages");
-                }
+                ui.notifications.warn(game.i18n.localize("DynPog.NoImages"));
                 return;
             }
 
@@ -614,14 +608,6 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
                     if (progressText) {
                         progressText.textContent = `${percent}%`;
                     }
-                    if (progressStatus) {
-                        progressStatus.textContent = game.i18n.format("DynPog.ProcessingFile", {
-                            name: basename,
-                            current: processed,
-                            total: total,
-                        });
-                    }
-
                     // Process the token
                     const result = await processToken(fileUrl, this._settings);
 
@@ -659,24 +645,12 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
             }
             const doneCount = processed - errors.length;
             if (errors.length > 0) {
-                if (progressStatus) {
-                    progressStatus.textContent = game.i18n.format("DynPog.DoneWithErrors", {
-                        count: doneCount,
-                        errors: errors.length,
-                    });
-                }
                 ui.notifications.warn(`${game.i18n.format("DynPog.DoneWithErrors", { count: doneCount, errors: errors.length })} — ${errors.length} files had errors. Check console.`);
             } else {
-                if (progressStatus) {
-                    progressStatus.textContent = game.i18n.format("DynPog.Done", { count: doneCount });
-                }
                 ui.notifications.info(game.i18n.format("DynPog.Done", { count: doneCount }));
             }
         } catch (err) {
             console.error("[DynPog] Batch processing failed:", err);
-            if (progressStatus) {
-                progressStatus.textContent = game.i18n.format("DynPog.BatchError", { message: err.message });
-            }
             ui.notifications.error(game.i18n.format("DynPog.BatchError", { message: err.message }));
         } finally {
             this._isProcessing = false;

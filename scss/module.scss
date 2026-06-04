@@ -204,7 +204,8 @@
 }
 
 .dpog-progress-bar {
-    width: 100%;
+    flex: 1 1 auto;
+    min-width: 0;
     height: 16px;
     background: var(--color-bg-primary, #111);
     border: 1px solid var(--color-border-dark, #555);
@@ -219,10 +220,11 @@
     transition: width 0.3s ease;
 }
 
-.dpog-progress-meta {
+.dpog-progress-row {
     display: flex;
     align-items: center;
     gap: 8px;
+    min-width: 0;
 }
 
 .dpog-progress-text {
@@ -231,17 +233,6 @@
     font-weight: bold;
     color: var(--color-text-bright, #fff);
     text-align: left;
-}
-
-.dpog-progress-status {
-    flex: 1 1 auto;
-    min-width: 0;
-    font-size: 11px;
-    color: var(--color-text-muted, #888);
-    text-align: right;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
 }
 
 /* ── Action buttons ── */
