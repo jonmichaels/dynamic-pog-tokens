@@ -29,13 +29,31 @@ const DEFAULT_SETTINGS = {
     includeRing: false,
 };
 
+function decodeFilenameComponent(value) {
+    try {
+        return decodeURIComponent(String(value || ''));
+    } catch (_err) {
+        return String(value || '');
+    }
+}
+
 function sanitizeFilenameStem(stem) {
-    return String(stem || '')
+    return decodeFilenameComponent(stem)
         .trim()
-        .replace(/\s+/g, '_')
-        .replace(/[^A-Za-z0-9_-]+/g, '')
+        .replace(/[^A-Za-z0-9]+/g, '_')
         .replace(/_+/g, '_')
         .replace(/^_+|_+$/g, '') || 'token';
+}
+
+function getUniqueFilename(stem, ext, usedNames) {
+    let candidate = `${stem}${ext}`;
+    let index = 1;
+    while (usedNames.has(candidate.toLowerCase())) {
+        candidate = `${stem}_${index}${ext}`;
+        index++;
+    }
+    usedNames.add(candidate.toLowerCase());
+    return candidate;
 }
 
 const DEFAULT_SETTING_DEFINITIONS = {
@@ -596,6 +614,8 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
 
             // Scan selected source image or selected source directory for image files
             const imageFiles = this._sourceFiles ? this._sourceFiles : await this.#getImageFilesFromFolder(this._sourceDir);
+            const existingDest = await FilePicker.browse("data", this._destPath);
+            const usedOutputNames = new Set((existingDest.files || []).map(path => (path.split('/').pop() || path).toLowerCase()));
 
             const total = imageFiles.length;
             if (total === 0) {
@@ -628,7 +648,8 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
 
                     // Build output filename: prefix + original basename + suffix (strip original ext, add new)
                     const nameWithoutExt = basename.replace(/\.[^.]+$/, '');
-                    const outputName = sanitizeFilenameStem(prefix + nameWithoutExt + suffix) + ext;
+                    const outputStem = sanitizeFilenameStem(prefix + nameWithoutExt + suffix);
+                    const outputName = getUniqueFilename(outputStem, ext, usedOutputNames);
 
                     // Create File object for upload
                     const file = new File([resultBlob], outputName, { type: this._settings.format });

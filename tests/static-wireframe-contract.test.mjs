@@ -30,7 +30,7 @@ assert.match(template, /id="dpog-threshold"/, 'Threshold value must remain in DO
 assert.match(template, /dpog-threshold-row[^\n"]*dpog-hidden|dpog-hidden[^\n"]*dpog-threshold-row/, 'Threshold row must stay hidden from the UI');
 
 assert.match(appSource, /const suffix\s*=.*#dpog-suffix/s, 'Batch processing must read suffix input');
-assert.match(appSource, /sanitizeFilenameStem\(prefix \+ nameWithoutExt \+ suffix\) \+ ext/, 'Output filename must insert sanitized prefix/basename/suffix before extension');
+assert.match(appSource, /const outputStem\s*=\s*sanitizeFilenameStem\(prefix \+ nameWithoutExt \+ suffix\);[\s\S]*const outputName\s*=\s*getUniqueFilename\(outputStem, ext, usedOutputNames\);/, 'Output filename must insert sanitized prefix/basename/suffix before extension');
 assert.doesNotMatch(appSource, /querySelector\("#dpog-export-ring"\)/, 'App must not bind old Export With Ring button');
 assert.doesNotMatch(appSource, /querySelector\("#dpog-process-btn"\)/, 'App must not bind old preview Process button');
 assert.doesNotMatch(appSource, /thresholdRow\.classList\.toggle/, 'App must never reveal hidden Threshold row from saved mask settings');

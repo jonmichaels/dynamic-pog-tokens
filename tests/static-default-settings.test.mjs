@@ -39,7 +39,7 @@ assert.match(appSource, /for \(const \[settingName, definition\] of Object\.entr
 assert.match(appSource, /game\.settings\.register\(MODULE_ID, settingName, \{[\s\S]*?config:\s*true/, 'Default settings must be configurable from the standard Foundry Settings page');
 
 assert.match(appSource, /_getConfiguredDefaults\(\)/, 'App must read configured defaults from Foundry settings');
-assert.match(appSource, /sanitizeFilenameStem\(prefix \+ nameWithoutExt \+ suffix\) \+ ext/, 'Output filename must still use sanitized prefix + basename + suffix + extension');
+assert.match(appSource, /const outputStem\s*=\s*sanitizeFilenameStem\(prefix \+ nameWithoutExt \+ suffix\);[\s\S]*const outputName\s*=\s*getUniqueFilename\(outputStem, ext, usedOutputNames\);/, 'Output filename must still use sanitized prefix + basename + suffix + extension');
 assert.ok(i18n.DynPog.SettingsDefaultSuffix, 'Settings i18n must include default suffix label');
 
 console.log('static-default-settings: ok');
