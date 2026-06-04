@@ -45,12 +45,12 @@
         <div class="dpog-control-row dpog-section-divider">
             <label class="dpog-control-label">{{localize "DynPog.Quality"}}</label>
             <div class="dpog-radio-group">
-                <label class="dpog-radio-label">
-                    <input type="radio" name="quality" value="quick" checked />
+                <label class="dpog-radio-label" title="{{localize "DynPog.TooltipQuick"}}">
+                    <input type="radio" name="quality" value="quick" checked title="{{localize "DynPog.TooltipQuick"}}" />
                     <span>{{localize "DynPog.Quick"}}</span>
                 </label>
-                <label class="dpog-radio-label">
-                    <input type="radio" name="quality" value="optimized" />
+                <label class="dpog-radio-label" title="{{localize "DynPog.TooltipOptimized"}}">
+                    <input type="radio" name="quality" value="optimized" title="{{localize "DynPog.TooltipOptimized"}}" />
                     <span>{{localize "DynPog.Optimized"}}</span>
                 </label>
             </div>
@@ -58,17 +58,17 @@
 
         <div class="dpog-control-grid">
             <!-- Trim control -->
-            <div class="dpog-control-row dpog-control-field">
-                <label class="dpog-control-label" for="dpog-trim">{{localize "DynPog.Trim"}}</label>
-                <input type="number" id="dpog-trim" name="trim" value="0" min="0" max="100" step="1" class="dpog-number-input" />
+            <div class="dpog-control-row dpog-control-field" title="{{localize "DynPog.TooltipTrim"}}">
+                <label class="dpog-control-label" for="dpog-trim" title="{{localize "DynPog.TooltipTrim"}}">{{localize "DynPog.Trim"}}</label>
+                <input type="number" id="dpog-trim" name="trim" value="0" min="0" max="100" step="1" class="dpog-number-input" title="{{localize "DynPog.TooltipTrim"}}" />
                 <span class="dpog-unit">{{localize "DynPog.Pixels"}}</span>
             </div>
 
             <!-- Mask checkbox -->
-            <div class="dpog-control-row dpog-control-field">
-                <label class="dpog-control-label">{{localize "DynPog.Mask"}}</label>
-                <label class="dpog-checkbox-label">
-                    <input type="checkbox" id="dpog-mask" name="mask" />
+            <div class="dpog-control-row dpog-control-field" title="{{localize "DynPog.TooltipMask"}}">
+                <label class="dpog-control-label" title="{{localize "DynPog.TooltipMask"}}">{{localize "DynPog.Mask"}}</label>
+                <label class="dpog-checkbox-label" title="{{localize "DynPog.TooltipMask"}}">
+                    <input type="checkbox" id="dpog-mask" name="mask" title="{{localize "DynPog.TooltipMask"}}" />
                     <span>{{localize "DynPog.EnableMask"}}</span>
                 </label>
             </div>
@@ -82,9 +82,9 @@
         </div>
 
         <!-- Ring size select -->
-        <div class="dpog-control-row dpog-control-field dpog-ring-row">
-            <label class="dpog-control-label" for="dpog-ring-select">{{localize "DynPog.RingSize"}}</label>
-            <select id="dpog-ring-select" name="ringSize" class="dpog-select">
+        <div class="dpog-control-row dpog-control-field dpog-ring-row" title="{{localize "DynPog.TooltipRingSize"}}">
+            <label class="dpog-control-label" for="dpog-ring-select" title="{{localize "DynPog.TooltipRingSize"}}">{{localize "DynPog.RingSize"}}</label>
+            <select id="dpog-ring-select" name="ringSize" class="dpog-select" title="{{localize "DynPog.TooltipRingSize"}}">
                 <option value="auto" selected>{{localize "DynPog.RingAuto"}}</option>
                 <option value="tiny">{{localize "DynPog.RingTiny"}}</option>
                 <option value="sm">{{localize "DynPog.RingSmallMedium"}}</option>
@@ -96,15 +96,15 @@
 
         <div class="dpog-control-grid">
             <!-- Output filename prefix -->
-            <div class="dpog-control-row dpog-control-field">
-                <label class="dpog-control-label" for="dpog-prefix">{{localize "DynPog.Prefix"}}</label>
-                <input type="text" id="dpog-prefix" name="prefix" value="" class="dpog-text-input" />
+            <div class="dpog-control-row dpog-control-field" title="{{localize "DynPog.TooltipPrefix"}}">
+                <label class="dpog-control-label" for="dpog-prefix" title="{{localize "DynPog.TooltipPrefix"}}">{{localize "DynPog.Prefix"}}</label>
+                <input type="text" id="dpog-prefix" name="prefix" value="" class="dpog-text-input" title="{{localize "DynPog.TooltipPrefix"}}" />
             </div>
 
             <!-- Output filename suffix -->
-            <div class="dpog-control-row dpog-control-field">
-                <label class="dpog-control-label" for="dpog-suffix">{{localize "DynPog.Suffix"}}</label>
-                <input type="text" id="dpog-suffix" name="suffix" value="_dr" class="dpog-text-input" />
+            <div class="dpog-control-row dpog-control-field" title="{{localize "DynPog.TooltipSuffix"}}">
+                <label class="dpog-control-label" for="dpog-suffix" title="{{localize "DynPog.TooltipSuffix"}}">{{localize "DynPog.Suffix"}}</label>
+                <input type="text" id="dpog-suffix" name="suffix" value="_dr" class="dpog-text-input" title="{{localize "DynPog.TooltipSuffix"}}" />
             </div>
         </div>
 
@@ -125,10 +125,10 @@
             </div>
 
             <!-- Export ring checkbox -->
-            <div class="dpog-control-row dpog-control-field">
-                <label class="dpog-control-label">{{localize "DynPog.ExportRing"}}</label>
-                <label class="dpog-checkbox-label">
-                    <input type="checkbox" id="dpog-include-ring" name="includeRing" />
+            <div class="dpog-control-row dpog-control-field" title="{{localize "DynPog.TooltipIncludeRing"}}">
+                <label class="dpog-control-label" title="{{localize "DynPog.TooltipIncludeRing"}}">{{localize "DynPog.ExportRing"}}</label>
+                <label class="dpog-checkbox-label" title="{{localize "DynPog.TooltipIncludeRing"}}">
+                    <input type="checkbox" id="dpog-include-ring" name="includeRing" title="{{localize "DynPog.TooltipIncludeRing"}}" />
                     <span>{{localize "DynPog.IncludeRing"}}</span>
                 </label>
             </div>
