@@ -201,26 +201,12 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
     }
 
     /**
-     * Save current settings to Foundry game settings before closing.
-     * @override
-     */
-    async close(options = {}) {
-        this._saveSettings();
-        return super.close(options);
-    }
-
-    /**
      * Restore settings from Foundry game settings and apply to UI.
      */
     _restoreSettings() {
         try {
-            const saved = game.settings.get(MODULE_ID, 'lastSettings');
             const configuredDefaults = this._getConfiguredDefaults();
             this._settings = { ...DEFAULT_SETTINGS, ...configuredDefaults };
-            if (saved && saved !== '{}') {
-                const parsed = JSON.parse(saved);
-                this._settings = { ...this._settings, ...parsed };
-            }
         } catch (e) {
             console.warn('[DynPog] Failed to restore settings:', e);
         } finally {
@@ -242,17 +228,6 @@ class PogTokensApp extends foundry.applications.api.HandlebarsApplicationMixin(
             }
         }
         return defaults;
-    }
-
-    /**
-     * Save current settings to Foundry game settings.
-     */
-    _saveSettings() {
-        try {
-            game.settings.set(MODULE_ID, 'lastSettings', JSON.stringify(this._settings));
-        } catch (e) {
-            console.warn('[DynPog] Failed to save settings:', e);
-        }
     }
 
     /**
@@ -1122,14 +1097,6 @@ export function initDynamicPogTokens() {
             range: definition.range,
         });
     }
-
-    // Register game setting for last-used app state persistence.
-    game.settings.register(MODULE_ID, 'lastSettings', {
-        scope: 'world',
-        config: false,
-        default: '{}',
-        type: String,
-    });
 
     // Register a scene control button to open the app
     Hooks.on("getSceneControlButtons", (controls) => {
