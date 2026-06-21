@@ -1,6 +1,6 @@
 {
   "name": "dynamic-pog-tokens",
-  "version": "1.0",
+  "version": "1.0.1",
   "scripts": {
     "build": "npx webpack --config webpack.config.js --mode production",
     "watch": "npx webpack --config webpack.config.js --mode development --watch",

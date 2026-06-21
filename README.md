@@ -3,7 +3,7 @@
 > **⚠️ Disclaimer:** This module was created by an AI coding agent (Hephaestus, via Hermes Agent) under the direction of Jon Michaels. While tested and functional, users should verify behavior in their own games before relying on it in critical sessions.
 
 [![Foundry VTT](https://img.shields.io/badge/Foundry-v13%20%7C%20v14-orange)](https://foundryvtt.com)
-[![Version](https://img.shields.io/badge/Version-v1.0-green)](https://github.com/jonmichaels/dynamic-pog-tokens/releases)
+[![Version](https://img.shields.io/badge/Version-v1.0.1-green)](https://github.com/jonmichaels/dynamic-pog-tokens/releases)
 
 Batch-process pog-style (circular) tokens to add support for **Foundry VTT Dynamic Token Rings**. The final token will have the subject centered and 2/3 of the size with a transparent background that extends the remaining 1/3 of the size. Trim tokens to remove existing rings. Add to mask to JPEGs and other tokens without a transparent background. Resize with high-quality Lanczos3 scaling via pica.
 
@@ -35,6 +35,13 @@ Download the [latest release](https://github.com/jonmichaels/dynamic-pog-tokens/
 
 - **Foundry VTT** v13 or v14
 - Compatible with all systems
+
+## Release Notes
+
+### v1.0.1
+
+- Fixed the scene controls integration for Foundry v13/v14 by using the object-style `getSceneControlButtons` API (`controls.tokens.tools`) instead of the older array-style lookup.
+- Added a regression test to prevent the toolbar button hook from reintroducing `controls.find(...)`.
 
 ## How It Works
 
