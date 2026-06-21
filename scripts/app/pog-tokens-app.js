@@ -1132,20 +1132,23 @@ export function initDynamicPogTokens() {
         });
     }
 
-    // Register a scene control button to open the app
+    // Register a scene control button to open the app.
+    // Foundry v13+ passes a Record<string, SceneControl>, not an array.
     Hooks.on("getSceneControlButtons", (controls) => {
-        const tokenControls = controls.find(c => c.name === "token");
-        if (tokenControls) {
-            tokenControls.tools.push({
-                name: "dynamicPogTokens",
-                title: "DynPog.Title",
-                icon: "fa-solid fa-circle-notch",
-                visible: game.user.isGM,
-                onClick: () => {
-                    new PogTokensApp().render(true);
-                },
-            });
-        }
+        if (!game.user.isGM || !controls.tokens) return;
+
+        controls.tokens.tools ??= {};
+        controls.tokens.tools.dynamicPogTokens = {
+            name: "dynamicPogTokens",
+            title: "DynPog.Title",
+            icon: "fa-solid fa-circle-notch",
+            order: Object.keys(controls.tokens.tools).length,
+            button: true,
+            visible: true,
+            onChange: () => {
+                new PogTokensApp().render({ force: true });
+            },
+        };
     });
 
     // Add a button to the Actor Directory sidebar footer
